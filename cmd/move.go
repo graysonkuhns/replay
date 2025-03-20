@@ -5,8 +5,13 @@ Copyright © 2025 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"context"
 	"fmt"
+	"log"
+	"strings"
+	"sync"
 
+	"cloud.google.com/go/pubsub"
 	"github.com/spf13/cobra"
 )
 
@@ -35,22 +40,72 @@ Each message is polled, published, and acknowledged sequentially.`,
 		}
 
 		// Informational output
-		fmt.Printf("Moving messages from %s (%s) to %s (%s)\n", source, sourceType, destination, destType)
+		fmt.Printf("Moving messages from %s to %s\n", source, destination)
 
-		// If count is 0, simulate moving a default of 3 messages until exhausted
+		// If count is 0, process a default of 3 messages
 		total := count
 		if total == 0 {
 			total = 3
 		}
 
-		for i := 1; i <= total; i++ {
-			fmt.Printf("Processing message %d:\n", i)
-			// Simulate polling
-			fmt.Printf(" - Polling message from %s\n", source)
-			// Simulate publishing
-			fmt.Printf(" - Publishing message to %s\n", destination)
-			// Simulate acknowledge
-			fmt.Printf(" - Acknowledging message at %s\n", source)
+		ctx := context.Background()
+		// Extract subscription project from full resource name
+		subParts := strings.Split(source, "/")
+		if len(subParts) < 4 {
+			log.Fatalf("Invalid subscription resource format: %s", source)
+		}
+		subProj := subParts[1]
+		subClient, err := pubsub.NewClient(ctx, subProj)
+		if err != nil {
+			log.Fatalf("Failed to create subscription client: %v", err)
+		}
+		defer subClient.Close()
+		sub := subClient.Subscription(source)
+
+		// Extract topic project from full resource name
+		topicParts := strings.Split(destination, "/")
+		if len(topicParts) < 4 {
+			log.Fatalf("Invalid topic resource format: %s", destination)
+		}
+		topicProj := topicParts[1]
+		topicClient, err := pubsub.NewClient(ctx, topicProj)
+		if err != nil {
+			log.Fatalf("Failed to create topic client: %v", err)
+		}
+		defer topicClient.Close()
+		topic := topicClient.Topic(destination)
+
+		// Receive messages sequentially until total is reached
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		var mu sync.Mutex
+		processed := 0
+
+		err = sub.Receive(ctx, func(ctx context.Context, msg *pubsub.Message) {
+			result := topic.Publish(ctx, &pubsub.Message{
+				Data:       msg.Data,
+				Attributes: msg.Attributes,
+			})
+			_, err := result.Get(ctx)
+			if err != nil {
+				log.Printf("Failed to publish message: %v", err)
+				msg.Nack()
+				return
+			}
+
+			msg.Ack()
+			fmt.Printf("Processed message %d\n", processed+1)
+
+			mu.Lock()
+			processed++
+			if processed >= total {
+				cancel()
+			}
+			mu.Unlock()
+		})
+		if err != nil {
+			log.Printf("Error during message receive: %v", err)
 		}
 
 		fmt.Println("Move operation completed.")
@@ -63,10 +118,10 @@ func init() {
 	// Define command flags
 	moveCmd.Flags().String("source-type", "", "Message source type")
 	moveCmd.Flags().String("destination-type", "", "Message destination type")
-	moveCmd.Flags().String("source", "", "Source identifier (e.g. subscription)")
-	moveCmd.Flags().String("destination", "", "Destination identifier (e.g. topic)")
-	moveCmd.Flags().Int("count", 0, "Number of messages to move (0 for all)")
-
+	moveCmd.Flags().String("source", "", "Full source resource name (e.g. projects/<proj>/subscriptions/<sub>)")
+	moveCmd.Flags().String("destination", "", "Full destination resource name (e.g. projects/<proj>/topics/<topic>)")
+	moveCmd.Flags().Int("count", 0, "Number of messages to move (0 for default 3)")
+	
 	// Make flags required except for count
 	moveCmd.MarkFlagRequired("source-type")
 	moveCmd.MarkFlagRequired("destination-type")
