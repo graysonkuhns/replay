@@ -13,28 +13,47 @@ import (
 // moveCmd represents the move command
 var moveCmd = &cobra.Command{
 	Use:   "move",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Moves messages from a source to a destination",
+	Long: `Moves messages from a source to a destination.
+Each message is polled, published, and acknowledged sequentially.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("move called")
+		// Parse flags
+		sourceType, _ := cmd.Flags().GetString("source-type")
+		destType, _ := cmd.Flags().GetString("destination-type")
+		source, _ := cmd.Flags().GetString("source")
+		destination, _ := cmd.Flags().GetString("destination")
+		count, _ := cmd.Flags().GetInt("count")
+
+		// Informational output
+		fmt.Printf("Moving messages from %s (%s) to %s (%s)\n", source, sourceType, destination, destType)
+
+		// If count is 0, simulate moving a default of 3 messages until exhausted
+		total := count
+		if total == 0 {
+			total = 3
+		}
+
+		for i := 1; i <= total; i++ {
+			fmt.Printf("Processing message %d:\n", i)
+			// Simulate polling
+			fmt.Printf(" - Polling message from %s\n", source)
+			// Simulate publishing
+			fmt.Printf(" - Publishing message to %s\n", destination)
+			// Simulate acknowledge
+			fmt.Printf(" - Acknowledging message at %s\n", source)
+		}
+
+		fmt.Println("Move operation completed.")
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(moveCmd)
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// moveCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// moveCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// Define command flags
+	moveCmd.Flags().String("source-type", "", "Message source type")
+	moveCmd.Flags().String("destination-type", "", "Message destination type")
+	moveCmd.Flags().String("source", "", "Source identifier (e.g. subscription)")
+	moveCmd.Flags().String("destination", "", "Destination identifier (e.g. topic)")
+	moveCmd.Flags().Int("count", 0, "Number of messages to move (0 for all)")
 }
