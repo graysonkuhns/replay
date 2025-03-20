@@ -24,6 +24,16 @@ Each message is polled, published, and acknowledged sequentially.`,
 		destination, _ := cmd.Flags().GetString("destination")
 		count, _ := cmd.Flags().GetInt("count")
 
+		// Validate supported types
+		if sourceType != "GCP_PUBSUB_SUBSCRIPTION" {
+			fmt.Printf("Error: unsupported source type: %s. Supported: GCP_PUBSUB_SUBSCRIPTION\n", sourceType)
+			return
+		}
+		if destType != "GCP_PUBSUB_TOPIC" {
+			fmt.Printf("Error: unsupported destination type: %s. Supported: GCP_PUBSUB_TOPIC\n", destType)
+			return
+		}
+
 		// Informational output
 		fmt.Printf("Moving messages from %s (%s) to %s (%s)\n", source, sourceType, destination, destType)
 
