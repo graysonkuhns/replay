@@ -56,4 +56,10 @@ func init() {
 	moveCmd.Flags().String("source", "", "Source identifier (e.g. subscription)")
 	moveCmd.Flags().String("destination", "", "Destination identifier (e.g. topic)")
 	moveCmd.Flags().Int("count", 0, "Number of messages to move (0 for all)")
+
+	// Make flags required except for count
+	moveCmd.MarkFlagRequired("source-type")
+	moveCmd.MarkFlagRequired("destination-type")
+	moveCmd.MarkFlagRequired("source")
+	moveCmd.MarkFlagRequired("destination")
 }
