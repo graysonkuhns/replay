@@ -25,6 +25,8 @@ This project follows Semantic Versioning 2.0 guidelines:
 
 ## Usage Examples
 
+### Move Operation
+
 To move messages from a GCP Pub/Sub subscription to a GCP Pub/Sub topic, run:
 
 ```
@@ -41,3 +43,25 @@ By default, the command moves all messages from the source to the destination un
 - Acknowledge the message at the source
 
 To move only a certain number of messages, add the --count [integer] argument.
+
+### Dead Letter Review
+
+To review and process dead-lettered messages, run either:
+
+```
+replay dead-letter-review \
+  --source-type GCP_PUBSUB_SUBSCRIPTION \
+  --destination-type GCP_PUBSUB_TOPIC \
+  --source projects/[project]/subscriptions/[name] \
+  --destination projects/[project]/topics/[name]
+```
+
+Or using the shortcut:
+
+```
+replay dlr \
+  --source-type GCP_PUBSUB_SUBSCRIPTION \
+  --destination-type GCP_PUBSUB_TOPIC \
+  --source projects/[project]/subscriptions/[name] \
+  --destination projects/[project]/topics/[name]
+```
