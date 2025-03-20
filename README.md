@@ -46,17 +46,7 @@ To move only a certain number of messages, add the --count [integer] argument.
 
 ### Dead Letter Review
 
-To review and process dead-lettered messages, run either:
-
-```
-replay dead-letter-review \
-  --source-type GCP_PUBSUB_SUBSCRIPTION \
-  --destination-type GCP_PUBSUB_TOPIC \
-  --source projects/[project]/subscriptions/[name] \
-  --destination projects/[project]/topics/[name]
-```
-
-Or using the shortcut:
+To review and process dead-lettered messages, run:
 
 ```
 replay dlr \
