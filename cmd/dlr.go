@@ -81,6 +81,8 @@ For moved messages, the message is republished to the destination.`,
 
 		// Loop to pull messages interactively
 		for {
+			msgNum := processed + 1
+			log.Printf("Polling for message %d...", msgNum)
 			pollCtx, pollCancel := context.WithTimeout(ctx, 5*time.Second)
 			req := &pubsubpb.PullRequest{
 				Subscription: source,
@@ -101,8 +103,7 @@ For moved messages, the message is republished to the destination.`,
 				break
 			}
 			receivedMsg := resp.ReceivedMessages[0]
-			processed++
-			msgNum := processed
+				processed = msgNum
 
 			// Show message details and prompt for action
 			fmt.Printf("\nMessage %d:\n", msgNum)
@@ -112,7 +113,7 @@ For moved messages, the message is republished to the destination.`,
 			input, _ := reader.ReadString('\n')
 			input = strings.TrimSpace(strings.ToLower(input))
 			if input == "m" {
-				fmt.Printf("Publishing message %d...\n", msgNum)
+				log.Printf("Publishing message %d...", msgNum)
 				result := topic.Publish(ctx, &pubsub.Message{
 					Data:       receivedMsg.Message.Data,
 					Attributes: receivedMsg.Message.Attributes,
@@ -122,9 +123,10 @@ For moved messages, the message is republished to the destination.`,
 					log.Printf("Failed to publish message %d: %v", msgNum, err)
 					continue
 				}
+				log.Printf("Published message %d successfully", msgNum)
 				fmt.Printf("Message %d moved successfully\n", msgNum)
 			} else if input == "d" {
-				fmt.Printf("Message %d discarded\n", msgNum)
+				fmt.Printf("Message %d discarded (acked)\n", msgNum)
 			} else {
 				fmt.Printf("Invalid input. Skipping message %d\n", msgNum)
 			}
@@ -135,6 +137,8 @@ For moved messages, the message is republished to the destination.`,
 			}
 			if err := subscriberClient.Acknowledge(ctx, ackReq); err != nil {
 				log.Printf("Failed to acknowledge message %d: %v", msgNum, err)
+			} else {
+				log.Printf("Acknowledged message %d", msgNum)
 			}
 			if count > 0 && processed >= count {
 				break
