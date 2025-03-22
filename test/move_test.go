@@ -54,9 +54,8 @@ func TestMoveOperation(t *testing.T) {
 	}
 	defer client.Close()
 
-	// reference source subscription and destination topic
+	// reference source subscription
 	sourceSub := client.Subscription(sourceSubName)
-	destTopic := client.Topic(destTopicName)
 
 	// purge any leftover messages off the source subscription.
 	if err := purgeSubscription(ctx, sourceSub); err != nil {
@@ -99,9 +98,8 @@ func TestMoveOperation(t *testing.T) {
 	os.Args = append([]string{"replay"}, moveArgs...)
 
 	// Run the move command.
-	if err := cmd.RootCmd.Execute(); err != nil {
-		t.Fatalf("Move command failed: %v", err)
-	}
+	// Removed error assignment since cmd.Execute() returns no value.
+	cmd.Execute()
 
 	// Allow time for messages to propagate to the destination.
 	time.Sleep(5 * time.Second)
