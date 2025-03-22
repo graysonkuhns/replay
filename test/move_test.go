@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"replay/cmd" // import the CLI package to get rootCmd
+	pubsubapiv1 "cloud.google.com/go/pubsub/apiv1"
+	pubsubpb "google.golang.org/genproto/googleapis/pubsub/v1"
 )
 
 // Added init function to log at startup
@@ -18,20 +20,39 @@ func init() {
 	log.Printf("Test suite initialization: logs are enabled")
 }
 
-// helper to purge a subscription by pulling (and acking) all available messages.
+// helper to purge a subscription by polling with low-level client.
 func purgeSubscription(ctx context.Context, sub *pubsub.Subscription) error {
-	// pull with short timeout repeatedly until no message is received.
+	subResource := sub.String() // assumes full resource name (e.g. projects/<proj>/subscriptions/<sub>)
+	subscriberClient, err := pubsubapiv1.NewSubscriberClient(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to create subscriber client: %w", err)
+	}
+	defer subscriberClient.Close()
+
 	for {
-		cctx, cancel := context.WithTimeout(ctx, 3*time.Second)
-		defer cancel()
-		err := sub.Receive(cctx, func(ctx context.Context, m *pubsub.Message) {
-			m.Ack()
-		})
-		// If error contains "context deadline exceeded" assume no more messages.
-		if err != nil && strings.Contains(err.Error(), "context deadline exceeded") {
+		pollCtx, pollCancel := context.WithTimeout(ctx, 5*time.Second)
+		req := &pubsubpb.PullRequest{
+			Subscription: subResource,
+			MaxMessages:  1,
+		}
+		resp, err := subscriberClient.Pull(pollCtx, req)
+		pollCancel()
+		if err != nil {
+			// assume timeout means no more messages available
+			if strings.Contains(err.Error(), "DeadlineExceeded") {
+				break
+			}
+			return fmt.Errorf("error during pull: %w", err)
+		}
+		if len(resp.ReceivedMessages) == 0 {
 			break
-		} else if err != nil {
-			return fmt.Errorf("failed during purge: %w", err)
+		}
+		ackReq := &pubsubpb.AcknowledgeRequest{
+			Subscription: subResource,
+			AckIds:       []string{resp.ReceivedMessages[0].AckId},
+		}
+		if err := subscriberClient.Acknowledge(ctx, ackReq); err != nil {
+			return fmt.Errorf("failed to acknowledge message: %w", err)
 		}
 	}
 	return nil
