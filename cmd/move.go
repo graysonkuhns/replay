@@ -140,7 +140,7 @@ Each message is polled, published, and acknowledged sequentially.`,
 				continue
 			}
 			log.Printf("Acked message %d", msgNum)
-			fmt.Printf("Processed message %d\n", msgNum)
+			log.Printf("Processed message %d", msgNum)
 
 			if count > 0 && processed >= count {
 				break
