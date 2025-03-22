@@ -141,7 +141,7 @@ For moved messages, the message is republished to the destination.`,
 			}
 		}
 
-		fmt.Printf("\nDLR review completed. Total messages processed: %d\n", processed)
+		fmt.Printf("\nDead-lettered messages review completed. Total messages processed: %d\n", processed)
 	},
 }
 
