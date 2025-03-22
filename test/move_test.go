@@ -94,7 +94,9 @@ func TestMoveOperation(t *testing.T) {
 	// Purge destination subscription too.
 	log.Printf("Purging destination subscription: default-events-subscription")
 	destSubPurge := client.Subscription("default-events-subscription")
-	if err := purgeSubscription(ctx, destSubPurge); err != nil {
+	destCtx, destCancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer destCancel()
+	if err := purgeSubscription(destCtx, destSubPurge); err != nil {
 		t.Fatalf("Failed to purge destination subscription: %v", err)
 	}
 	log.Printf("Completed purge of destination subscription: default-events-subscription")
