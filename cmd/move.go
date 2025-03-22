@@ -12,7 +12,9 @@ import (
 	"time"
 
 	"cloud.google.com/go/pubsub"
+	pubsubapiv1 "cloud.google.com/go/pubsub/apiv1"
 	"github.com/spf13/cobra"
+	pubsubpb "google.golang.org/genproto/googleapis/pubsub/v1"
 )
 
 // moveCmd represents the move command
@@ -74,53 +76,72 @@ Each message is polled, published, and acknowledged sequentially.`,
 		defer topicClient.Close()
 		topic := topicClient.Topic(topicParts[3])
 
+		// Create low-level Subscriber client for manual pull
+		subscriberClient, err := pubsubapiv1.NewSubscriberClient(ctx)
+		if err != nil {
+			log.Fatalf("Failed to create subscriber client: %v", err)
+		}
+		defer subscriberClient.Close()
+
 		var mu sync.Mutex
 		processed := 0
 
-		// Loop to poll a single message with 5-second timeout per poll.
+		// Loop to pull a single message with 5-second timeout per poll.
 		for {
 			pollCtx, pollCancel := context.WithTimeout(ctx, 5*time.Second)
-			err := sub.Receive(pollCtx, func(ctx context.Context, msg *pubsub.Message) {
-					// Atomically increment the processed count and assign the message number.
-					mu.Lock()
-					processed++
-					msgNum := processed
-					mu.Unlock()
-					
-					// Log when a message is polled with its number (without message content)
-					log.Printf("Polled message %d", msgNum)
-					
-					result := topic.Publish(ctx, &pubsub.Message{
-						Data:       msg.Data,
-						Attributes: msg.Attributes,
-					})
-					// Log before publishing with its message number
-					log.Printf("Publishing message %d", msgNum)
-					
-					_, err := result.Get(ctx)
-					if err != nil {
-						log.Printf("Failed to publish message %d: %v", msgNum, err)
-						msg.Nack()
-						return
-					}
-					// Log that the message was published successfully with its number
-					log.Printf("Published message %d successfully", msgNum)
-					
-					msg.Ack()
-					// Log that the message was acknowledged with its number
-					log.Printf("Acked message %d", msgNum)
-					
-					fmt.Printf("Processed message %d\n", msgNum)
-					
-					// Cancel the poll after the first message.
-					pollCancel()
-				})
-			pollCancel()
-			// Log errors other than timeout.
-			if err != nil && err != context.DeadlineExceeded {
-				log.Printf("Error during message receive: %v", err)
+			req := &pubsubpb.PullRequest{
+				Subscription: source,
+				MaxMessages:  1,
 			}
-			// If a count was provided and fulfilled, exit the loop.
+			resp, err := subscriberClient.Pull(pollCtx, req)
+			pollCancel()
+			if err != nil {
+				// Exit loop if no messages are available within timeout.
+				if strings.Contains(err.Error(), "DeadlineExceeded") {
+					log.Printf("No messages received within timeout")
+					break
+				}
+				log.Printf("Error during message pull: %v", err)
+				continue
+			}
+
+			if len(resp.ReceivedMessages) == 0 {
+				log.Printf("No messages received")
+				break
+			}
+
+			receivedMsg := resp.ReceivedMessages[0]
+			// Atomically increment the processed count and assign message number.
+			mu.Lock()
+			processed++
+			msgNum := processed
+			mu.Unlock()
+
+			log.Printf("Pulled message %d", msgNum)
+			log.Printf("Publishing message %d", msgNum)
+			result := topic.Publish(ctx, &pubsub.Message{
+				Data:       receivedMsg.Message.Data,
+				Attributes: receivedMsg.Message.Attributes,
+			})
+			_, err = result.Get(ctx)
+			if err != nil {
+				log.Printf("Failed to publish message %d: %v", msgNum, err)
+				continue
+			}
+			log.Printf("Published message %d successfully", msgNum)
+
+			// Acknowledge the message.
+			ackReq := &pubsubpb.AcknowledgeRequest{
+				Subscription: source,
+				AckIds:       []string{receivedMsg.AckId},
+			}
+			if err := subscriberClient.Acknowledge(ctx, ackReq); err != nil {
+				log.Printf("Failed to ack message %d: %v", msgNum, err)
+				continue
+			}
+			log.Printf("Acked message %d", msgNum)
+			fmt.Printf("Processed message %d\n", msgNum)
+
 			if count > 0 && processed >= count {
 				break
 			}
