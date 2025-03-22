@@ -1,6 +1,5 @@
 /*
 Copyright © 2025 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
@@ -60,7 +59,7 @@ Each message is polled, published, and acknowledged sequentially.`,
 			log.Fatalf("Failed to create subscription client: %v", err)
 		}
 		defer subClient.Close()
-		sub := subClient.Subscription(source)
+		sub := subClient.Subscription(subParts[3])
 
 		// Extract topic project from full resource name
 		topicParts := strings.Split(destination, "/")
@@ -73,7 +72,7 @@ Each message is polled, published, and acknowledged sequentially.`,
 			log.Fatalf("Failed to create topic client: %v", err)
 		}
 		defer topicClient.Close()
-		topic := topicClient.Topic(destination)
+		topic := topicClient.Topic(topicParts[3])
 
 		// Receive messages sequentially until total is reached
 		ctx, cancel := context.WithCancel(ctx)
@@ -121,7 +120,7 @@ func init() {
 	moveCmd.Flags().String("source", "", "Full source resource name (e.g. projects/<proj>/subscriptions/<sub>)")
 	moveCmd.Flags().String("destination", "", "Full destination resource name (e.g. projects/<proj>/topics/<topic>)")
 	moveCmd.Flags().Int("count", 0, "Number of messages to move (0 for default 3)")
-	
+
 	// Make flags required except for count
 	moveCmd.MarkFlagRequired("source-type")
 	moveCmd.MarkFlagRequired("destination-type")
