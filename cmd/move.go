@@ -9,6 +9,7 @@ import (
 	"log"
 	"strings"
 	"sync"
+	"time"
 
 	"cloud.google.com/go/pubsub"
 	"github.com/spf13/cobra"
@@ -74,14 +75,14 @@ Each message is polled, published, and acknowledged sequentially.`,
 		defer topicClient.Close()
 		topic := topicClient.Topic(topicParts[3])
 
-		// Receive messages sequentially until total is reached
-		ctx, cancel := context.WithCancel(ctx)
+		 // Use a 5-second timeout for receiving messages
+		recvCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
 
 		var mu sync.Mutex
 		processed := 0
 
-		err = sub.Receive(ctx, func(ctx context.Context, msg *pubsub.Message) {
+		err = sub.Receive(recvCtx, func(ctx context.Context, msg *pubsub.Message) {
 			result := topic.Publish(ctx, &pubsub.Message{
 				Data:       msg.Data,
 				Attributes: msg.Attributes,
