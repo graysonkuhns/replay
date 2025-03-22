@@ -42,13 +42,9 @@ Each message is polled, published, and acknowledged sequentially.`,
 		// Informational output
 		fmt.Printf("Moving messages from %s to %s\n", source, destination)
 
-		// If count is 0, process a default of 3 messages
-		total := count
-		if total == 0 {
-			total = 3
-		}
-
 		ctx := context.Background()
+		// Each message poll will use a 5-second timeout.
+
 		// Extract subscription project from full resource name
 		subParts := strings.Split(source, "/")
 		if len(subParts) < 4 {
@@ -75,40 +71,45 @@ Each message is polled, published, and acknowledged sequentially.`,
 		defer topicClient.Close()
 		topic := topicClient.Topic(topicParts[3])
 
-		 // Use a 5-second timeout for receiving messages
-		recvCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-		defer cancel()
-
 		var mu sync.Mutex
 		processed := 0
 
-		err = sub.Receive(recvCtx, func(ctx context.Context, msg *pubsub.Message) {
-			result := topic.Publish(ctx, &pubsub.Message{
-				Data:       msg.Data,
-				Attributes: msg.Attributes,
+		// Loop to poll a single message with 5-second timeout per poll.
+		for {
+			pollCtx, pollCancel := context.WithTimeout(ctx, 5*time.Second)
+			err := sub.Receive(pollCtx, func(ctx context.Context, msg *pubsub.Message) {
+				result := topic.Publish(ctx, &pubsub.Message{
+					Data:       msg.Data,
+					Attributes: msg.Attributes,
+				})
+				_, err := result.Get(ctx)
+				if err != nil {
+					log.Printf("Failed to publish message: %v", err)
+					msg.Nack()
+					return
+				}
+				msg.Ack()
+				fmt.Printf("Processed message %d\n", processed+1)
+
+				mu.Lock()
+				processed++
+				mu.Unlock()
+
+				// Cancel the poll after the first message.
+				pollCancel()
 			})
-			_, err := result.Get(ctx)
-			if err != nil {
-				log.Printf("Failed to publish message: %v", err)
-				msg.Nack()
-				return
+			pollCancel()
+			// Log errors other than timeout.
+			if err != nil && err != context.DeadlineExceeded {
+				log.Printf("Error during message receive: %v", err)
 			}
-
-			msg.Ack()
-			fmt.Printf("Processed message %d\n", processed+1)
-
-			mu.Lock()
-			processed++
-			if processed >= total {
-				cancel()
+			// If a count was provided and fulfilled, exit the loop.
+			if count > 0 && processed >= count {
+				break
 			}
-			mu.Unlock()
-		})
-		if err != nil {
-			log.Printf("Error during message receive: %v", err)
 		}
 
-		fmt.Println("Move operation completed.")
+		fmt.Printf("Move operation completed. Total messages moved: %d\n", processed)
 	},
 }
 
