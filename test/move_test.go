@@ -1,0 +1,133 @@
+package cmd_test
+
+import (
+	"cloud.google.com/go/pubsub"
+	"context"
+	"fmt"
+	"log"
+	"os"
+	"strings"
+	"testing"
+	"time"
+
+	"replay/cmd" // import the CLI package to get rootCmd
+)
+
+// helper to purge a subscription by pulling (and acking) all available messages.
+func purgeSubscription(ctx context.Context, sub *pubsub.Subscription) error {
+	// pull with short timeout repeatedly until no message is received.
+	for {
+		cctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+		defer cancel()
+		err := sub.Receive(cctx, func(ctx context.Context, m *pubsub.Message) {
+			m.Ack()
+		})
+		// If error contains "context deadline exceeded" assume no more messages.
+		if err != nil && strings.Contains(err.Error(), "context deadline exceeded") {
+			break
+		} else if err != nil {
+			return fmt.Errorf("failed during purge: %w", err)
+		}
+	}
+	return nil
+}
+
+func TestMoveOperation(t *testing.T) {
+	ctx := context.Background()
+	projectID := os.Getenv("GCP_PROJECT")
+	if projectID == "" {
+		t.Fatal("GCP_PROJECT environment variable must be set")
+	}
+	// For this test, we move messages from the dead letter infra to the normal events infra.
+	// Use dead letter topic/subscription as source...
+	sourceTopicName := "default-events-dead-letter"
+	sourceSubName := "default-events-dead-letter-subscription"
+	// ...and use normal events topic as destination.
+	destTopicName := "default-events"
+	// Reference the already created destination subscription if needed for validation,
+	// here we use the destination topic and the dead letter subscription is now our source.
+	
+	// create a Pub/Sub client
+	client, err := pubsub.NewClient(ctx, projectID)
+	if err != nil {
+		t.Fatalf("Failed to create PubSub client: %v", err)
+	}
+	defer client.Close()
+
+	// reference source subscription and destination topic
+	sourceSub := client.Subscription(sourceSubName)
+	destTopic := client.Topic(destTopicName)
+
+	// purge any leftover messages off the source subscription.
+	if err := purgeSubscription(ctx, sourceSub); err != nil {
+		t.Fatalf("Failed to purge source subscription: %v", err)
+	}
+
+	// publish some test messages to the dead letter topic (source topic).
+	sourceTopic := client.Topic(sourceTopicName)
+	var publishIDs []string
+	numMessages := 3
+	for i := 1; i <= numMessages; i++ {
+		result := sourceTopic.Publish(ctx, &pubsub.Message{
+			Data: []byte(fmt.Sprintf("Test message %d", i)),
+		})
+		id, err := result.Get(ctx)
+		if err != nil {
+			t.Fatalf("Failed to publish message %d: %v", i, err)
+		}
+		publishIDs = append(publishIDs, id)
+	}
+	log.Printf("Published test messages to dead letter topic: %v", publishIDs)
+
+	// Allow time for the dead letter subscription to receive the published messages.
+	time.Sleep(10 * time.Second)
+
+	// Set up the CLI command arguments for the move operation.
+	// Here the move command will pull messages from the dead letter subscription and
+	// publish them to the normal events topic.
+	moveArgs := []string{
+		"move",
+		"--source-type", "GCP_PUBSUB_SUBSCRIPTION",
+		"--destination-type", "GCP_PUBSUB_TOPIC",
+		"--source", fmt.Sprintf("projects/%s/subscriptions/%s", projectID, sourceSubName),
+		"--destination", fmt.Sprintf("projects/%s/topics/%s", projectID, destTopicName),
+		"--count", fmt.Sprintf("%d", numMessages),
+	}
+
+	origArgs := os.Args
+	defer func() { os.Args = origArgs }()
+	os.Args = append([]string{"replay"}, moveArgs...)
+
+	// Run the move command.
+	if err := cmd.RootCmd.Execute(); err != nil {
+		t.Fatalf("Move command failed: %v", err)
+	}
+
+	// Allow time for messages to propagate to the destination.
+	time.Sleep(5 * time.Second)
+
+	// Pull moved messages from the destination subscription provided by Terraform.
+	// For verification we assume the destination subscription does exist.
+	// (If necessary, a separate subscription may be created in Terraform and referenced here.)
+	// In this case we'll use the destination subscription "default-events-subscription".
+	destSub := client.Subscription("default-events-subscription")
+	received := make([]*pubsub.Message, 0)
+	cctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+	err = destSub.Receive(cctx, func(ctx context.Context, m *pubsub.Message) {
+		received = append(received, m)
+		m.Ack()
+		if len(received) >= numMessages {
+			cancel()
+		}
+	})
+	if err != nil && err != context.Canceled {
+		t.Fatalf("Error receiving messages from destination subscription: %v", err)
+	}
+
+	if len(received) != numMessages {
+		t.Fatalf("Expected %d moved messages, got %d", numMessages, len(received))
+	}
+
+	t.Logf("Successfully moved %d messages", numMessages)
+}
