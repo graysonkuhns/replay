@@ -91,6 +91,14 @@ func TestMoveOperation(t *testing.T) {
 	}
 	log.Printf("Completed purge of source subscription: %s", sourceSubName)
 
+	// Purge destination subscription too.
+	log.Printf("Purging destination subscription: default-events-subscription")
+	destSubPurge := client.Subscription("default-events-subscription")
+	if err := purgeSubscription(ctx, destSubPurge); err != nil {
+		t.Fatalf("Failed to purge destination subscription: %v", err)
+	}
+	log.Printf("Completed purge of destination subscription: default-events-subscription")
+
 	// publish some test messages to the dead letter topic (source topic).
 	sourceTopic := client.Topic(sourceTopicName)
 	var publishIDs []string
