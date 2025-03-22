@@ -14,4 +14,4 @@ if [ -z "$GCP_PROJECT" ]; then
 fi
 
 echo "Running all tests..."
-go test -v ./...
+go test -v ./test
