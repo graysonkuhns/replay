@@ -55,7 +55,6 @@ For moved messages, the message is republished to the destination.`,
 			log.Fatalf("Failed to create subscription client: %v", err)
 		}
 		defer subClient.Close()
-		sub := subClient.Subscription(subParts[3])
 
 		// Set up topic client
 		topicParts := strings.Split(destination, "/")
