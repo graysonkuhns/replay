@@ -78,43 +78,40 @@ Each message is polled, published, and acknowledged sequentially.`,
 		for {
 			pollCtx, pollCancel := context.WithTimeout(ctx, 5*time.Second)
 			err := sub.Receive(pollCtx, func(ctx context.Context, msg *pubsub.Message) {
-				// Compute message number with locking.
-				mu.Lock()
-				msgNum := processed + 1
-				mu.Unlock()
-				
-				// Log when a message is polled with its number (without message content)
-				log.Printf("Polled message %d", msgNum)
-				
-				result := topic.Publish(ctx, &pubsub.Message{
-					Data:       msg.Data,
-					Attributes: msg.Attributes,
+					// Atomically increment the processed count and assign the message number.
+					mu.Lock()
+					processed++
+					msgNum := processed
+					mu.Unlock()
+					
+					// Log when a message is polled with its number (without message content)
+					log.Printf("Polled message %d", msgNum)
+					
+					result := topic.Publish(ctx, &pubsub.Message{
+						Data:       msg.Data,
+						Attributes: msg.Attributes,
+					})
+					// Log before publishing with its message number
+					log.Printf("Publishing message %d", msgNum)
+					
+					_, err := result.Get(ctx)
+					if err != nil {
+						log.Printf("Failed to publish message %d: %v", msgNum, err)
+						msg.Nack()
+						return
+					}
+					// Log that the message was published successfully with its number
+					log.Printf("Published message %d successfully", msgNum)
+					
+					msg.Ack()
+					// Log that the message was acknowledged with its number
+					log.Printf("Acked message %d", msgNum)
+					
+					fmt.Printf("Processed message %d\n", msgNum)
+					
+					// Cancel the poll after the first message.
+					pollCancel()
 				})
-				// Log before publishing with its message number
-				log.Printf("Publishing message %d", msgNum)
-				
-				_, err := result.Get(ctx)
-				if err != nil {
-					log.Printf("Failed to publish message %d: %v", msgNum, err)
-					msg.Nack()
-					return
-				}
-				// Log that the message was published successfully with its number
-				log.Printf("Published message %d successfully", msgNum)
-				
-				msg.Ack()
-				// Log that the message was acknowledged with its number
-				log.Printf("Acked message %d", msgNum)
-				
-				fmt.Printf("Processed message %d\n", msgNum)
-				
-				mu.Lock()
-				processed = msgNum
-				mu.Unlock()
-				
-				// Cancel the poll after the first message.
-				pollCancel()
-			})
 			pollCancel()
 			// Log errors other than timeout.
 			if err != nil && err != context.DeadlineExceeded {
