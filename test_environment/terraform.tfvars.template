@@ -1,0 +1,2 @@
+gcp_project = ""
+gcp_region = "us-central1"
