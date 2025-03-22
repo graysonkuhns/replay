@@ -30,4 +30,5 @@ resource "google_pubsub_subscription" "events_dead_letter" {
   labels = {
     environment = local.environment
   }
+  ack_deadline_seconds = 600
 }
