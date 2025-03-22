@@ -57,6 +57,9 @@ Each message is polled, published, and acknowledged sequentially.`,
 		}
 		defer subClient.Close()
 		sub := subClient.Subscription(subParts[3])
+		// Ensure sequential processing
+		sub.ReceiveSettings.NumGoroutines = 1
+		sub.ReceiveSettings.MaxOutstandingMessages = 1
 
 		// Extract topic project from full resource name
 		topicParts := strings.Split(destination, "/")
