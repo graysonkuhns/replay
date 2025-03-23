@@ -153,31 +153,14 @@ func TestMoveOperation(t *testing.T) {
 	time.Sleep(5 * time.Second)
 	log.Printf("Waiting for messages to propagate to destination subscription")
 
-	// Pull moved messages from the destination subscription provided by Terraform.
-	// For verification we assume the destination subscription does exist.
-	// (If necessary, a separate subscription may be created in Terraform and referenced here.)
-	// In this case we'll use the destination subscription "default-events-subscription".
+	// Pull moved messages from the destination subscription using the helper.
 	log.Printf("Starting to receive messages from destination subscription: default-events-subscription")
 	destSub := client.Subscription("default-events-subscription")
-	received := make([]*pubsub.Message, 0)
-	cctx, cancel := context.WithTimeout(ctx, 20*time.Second)
-	defer cancel()
-	err = destSub.Receive(cctx, func(ctx context.Context, m *pubsub.Message) {
-		// Only count messages from our test run
-		if m.Attributes["testRun"] == testRunValue {
-			log.Printf("Received test message: %s", string(m.Data))
-			received = append(received, m)
-		} else {
-			log.Printf("Ignoring non-test message: %s", string(m.Data))
-		}
-		m.Ack()
-		if len(received) >= numMessages {
-			cancel()
-		}
-	})
-	if err != nil && err != context.Canceled {
-		t.Fatalf("Error receiving messages from destination subscription: %v", err)
+	received, err := testhelpers.PollMessages(ctx, destSub, testRunValue, numMessages)
+	if err != nil {
+		t.Fatalf("Error receiving messages: %v", err)
 	}
+	log.Printf("Successfully received %d messages", len(received))
 
 	if len(received) != numMessages {
 		t.Fatalf("Expected %d moved messages, got %d", numMessages, len(received))

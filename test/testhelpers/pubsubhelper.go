@@ -66,3 +66,29 @@ func PublishTestMessages(ctx context.Context, topic *pubsub.Topic, messages []pu
 	}
 	return publishIDs, nil
 }
+
+// PollMessages polls messages from a subscription and verifies the expected count.
+func PollMessages(ctx context.Context, sub *pubsub.Subscription, testRunValue string, expectedCount int) ([]*pubsub.Message, error) {
+	var received []*pubsub.Message
+	cctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+	err := sub.Receive(cctx, func(ctx context.Context, m *pubsub.Message) {
+		if m.Attributes["testRun"] == testRunValue {
+			log.Printf("Received test message: %s", string(m.Data))
+			received = append(received, m)
+		} else {
+			log.Printf("Ignoring non-test message: %s", string(m.Data))
+		}
+		m.Ack()
+		if len(received) >= expectedCount {
+			cancel()
+		}
+	})
+	if err != nil && err != context.Canceled {
+		return nil, err
+	}
+	if len(received) != expectedCount {
+		return received, fmt.Errorf("expected %d messages, got %d", expectedCount, len(received))
+	}
+	return received, nil
+}
