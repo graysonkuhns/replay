@@ -130,7 +130,12 @@ func TestMoveOperation(t *testing.T) {
 	expectedOutput := strings.Join(expectedLines, "\n") + "\n"
 
 	if actual != expectedOutput {
-		t.Fatalf("CLI output mismatch.\nExpected (with timestamps replaced):\n%q\nGot:\n%q", expectedOutput, actual)
+		// Split actual output into individual lines.
+		actualLines := strings.Split(strings.TrimSpace(actual), "\n")
+		// Format expected and actual outputs to show one line per code line.
+		expectedStr := strings.Join(expectedLines, "\n")
+		actualStr := strings.Join(actualLines, "\n")
+		t.Fatalf("CLI output mismatch.\nExpected output:\n%s\nActual output:\n%s", expectedStr, actualStr)
 	}
 
 	// Allow time for messages to propagate to the destination.
