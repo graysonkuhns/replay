@@ -125,7 +125,6 @@ func TestMoveOperation(t *testing.T) {
 		"[TIMESTAMP] Acked message 3",
 		"[TIMESTAMP] Processed message 3",
 		fmt.Sprintf("[TIMESTAMP] Move operation completed. Total messages moved: %d", numMessages),
-		"[TIMESTAMP] Move command executed",
 	}
 	expectedOutput := strings.Join(expectedLines, "\n") + "\n"
 
