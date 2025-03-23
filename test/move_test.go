@@ -179,11 +179,11 @@ func TestMoveOperation(t *testing.T) {
 
 	// Define expected output with log lines included.
 	expectedOutput := fmt.Sprintf(
-		"Moving messages from projects/%s/subscriptions/%s to projects/%s/topics/%s\n"+
+		"[TIMESTAMP] Moving messages from projects/%s/subscriptions/%s to projects/%s/topics/%s\n"+
 			"[TIMESTAMP] Pulled message 1\n[TIMESTAMP] Publishing message 1\n[TIMESTAMP] Published message 1 successfully\n[TIMESTAMP] Acked message 1\n[TIMESTAMP] Processed message 1\n"+
 			"[TIMESTAMP] Pulled message 2\n[TIMESTAMP] Publishing message 2\n[TIMESTAMP] Published message 2 successfully\n[TIMESTAMP] Acked message 2\n[TIMESTAMP] Processed message 2\n"+
 			"[TIMESTAMP] Pulled message 3\n[TIMESTAMP] Publishing message 3\n[TIMESTAMP] Published message 3 successfully\n[TIMESTAMP] Acked message 3\n[TIMESTAMP] Processed message 3\n"+
-			"Move operation completed. Total messages moved: %d\n"+
+			"[TIMESTAMP] Move operation completed. Total messages moved: %d\n"+
 			"[TIMESTAMP] Move command executed\n",
 		projectID, sourceSubName, projectID, destTopicName, numMessages)
 

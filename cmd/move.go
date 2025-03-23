@@ -5,7 +5,6 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"strings"
 	"sync"
@@ -36,16 +35,16 @@ Each message is polled, published, and acknowledged sequentially.`,
 
 		// Validate supported types
 		if sourceType != "GCP_PUBSUB_SUBSCRIPTION" {
-			fmt.Printf("Error: unsupported source type: %s. Supported: GCP_PUBSUB_SUBSCRIPTION\n", sourceType)
+			log.Printf("Error: unsupported source type: %s. Supported: GCP_PUBSUB_SUBSCRIPTION", sourceType)
 			return
 		}
 		if destType != "GCP_PUBSUB_TOPIC" {
-			fmt.Printf("Error: unsupported destination type: %s. Supported: GCP_PUBSUB_TOPIC\n", destType)
+			log.Printf("Error: unsupported destination type: %s. Supported: GCP_PUBSUB_TOPIC", destType)
 			return
 		}
 
 		// Informational output
-		fmt.Printf("Moving messages from %s to %s\n", source, destination)
+		log.Printf("Moving messages from %s to %s", source, destination)
 
 		ctx := context.Background()
 		// Each message poll will use a 5-second timeout.
@@ -150,7 +149,7 @@ Each message is polled, published, and acknowledged sequentially.`,
 			}
 		}
 
-		fmt.Printf("Move operation completed. Total messages moved: %d\n", processed)
+		log.Printf("Move operation completed. Total messages moved: %d", processed)
 	},
 }
 
