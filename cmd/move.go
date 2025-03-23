@@ -16,7 +16,6 @@ import (
 	pubsubapiv1 "cloud.google.com/go/pubsub/apiv1"
 	"github.com/spf13/cobra"
 
-	// Updated deprecated package import:
 	"cloud.google.com/go/pubsub/apiv1/pubsubpb"
 )
 
@@ -27,7 +26,7 @@ var moveCmd = &cobra.Command{
 	Long: `Moves messages from a source to a destination.
 Each message is polled, published, and acknowledged sequentially.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		log.SetOutput(os.Stdout) // added: direct log output to stdout
+		log.SetOutput(os.Stdout)
 		// Parse flags
 		sourceType, _ := cmd.Flags().GetString("source-type")
 		destType, _ := cmd.Flags().GetString("destination-type")
