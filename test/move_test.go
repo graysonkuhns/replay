@@ -1,22 +1,22 @@
 package cmd_test
 
 import (
-	"bytes" // added
+	"bytes"
 	"context"
 	"fmt"
 	"log"
 	"os"
-	"regexp" // added
+	"regexp"
 	"strings"
 	"testing"
 	"time"
 
 	"cloud.google.com/go/pubsub"
 
-	"replay/cmd" // import the CLI package to get rootCmd
+	"replay/cmd"
 
 	pubsubapiv1 "cloud.google.com/go/pubsub/apiv1"
-	pubsubpb "google.golang.org/genproto/googleapis/pubsub/v1"
+	pubsubpb "cloud.google.com/go/pubsub/apiv1/pubsubpb" // updated import: using new package
 )
 
 // Added init function to log at startup
