@@ -1,16 +1,20 @@
 package cmd_test
 
 import (
-	"cloud.google.com/go/pubsub"
+	"bytes" // added
 	"context"
 	"fmt"
 	"log"
 	"os"
+	"regexp" // added
 	"strings"
 	"testing"
 	"time"
 
+	"cloud.google.com/go/pubsub"
+
 	"replay/cmd" // import the CLI package to get rootCmd
+
 	pubsubapiv1 "cloud.google.com/go/pubsub/apiv1"
 	pubsubpb "google.golang.org/genproto/googleapis/pubsub/v1"
 )
@@ -73,7 +77,7 @@ func TestMoveOperation(t *testing.T) {
 	destTopicName := "default-events"
 	// Reference the already created destination subscription if needed for validation,
 	// here we use the destination topic and the dead letter subscription is now our source.
-	
+
 	// create a Pub/Sub client
 	client, err := pubsub.NewClient(ctx, projectID)
 	if err != nil {
@@ -147,9 +151,45 @@ func TestMoveOperation(t *testing.T) {
 	defer func() { os.Args = origArgs }()
 	os.Args = append([]string{"replay"}, moveArgs...)
 
+	// Capture CLI output using os.Pipe.
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("Failed to create pipe: %v", err)
+	}
+	oldOut := os.Stdout
+	os.Stdout = w
 	// Run the move command.
 	cmd.Execute()
 	log.Printf("Move command executed")
+	// Restore os.Stdout.
+	w.Close()
+	os.Stdout = oldOut
+
+	// Read captured output.
+	var buf bytes.Buffer
+	if _, err := buf.ReadFrom(r); err != nil {
+		t.Fatalf("Failed to read captured output: %v", err)
+	}
+	r.Close()
+
+	// Replace timestamp parts with a token.
+	actual := buf.String()
+	tsRe := regexp.MustCompile(`\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}`)
+	actual = tsRe.ReplaceAllString(actual, "[TIMESTAMP]")
+
+	// Define expected output with log lines included.
+	expectedOutput := fmt.Sprintf(
+		"Moving messages from projects/%s/subscriptions/%s to projects/%s/topics/%s\n"+
+			"[TIMESTAMP] Pulled message 1\n[TIMESTAMP] Publishing message 1\n[TIMESTAMP] Published message 1 successfully\n[TIMESTAMP] Acked message 1\n[TIMESTAMP] Processed message 1\n"+
+			"[TIMESTAMP] Pulled message 2\n[TIMESTAMP] Publishing message 2\n[TIMESTAMP] Published message 2 successfully\n[TIMESTAMP] Acked message 2\n[TIMESTAMP] Processed message 2\n"+
+			"[TIMESTAMP] Pulled message 3\n[TIMESTAMP] Publishing message 3\n[TIMESTAMP] Published message 3 successfully\n[TIMESTAMP] Acked message 3\n[TIMESTAMP] Processed message 3\n"+
+			"Move operation completed. Total messages moved: %d\n"+
+			"[TIMESTAMP] Move command executed\n",
+		projectID, sourceSubName, projectID, destTopicName, numMessages)
+
+	if actual != expectedOutput {
+		t.Fatalf("CLI output mismatch.\nExpected (with timestamps replaced):\n%q\nGot:\n%q", expectedOutput, actual)
+	}
 
 	// Allow time for messages to propagate to the destination.
 	time.Sleep(5 * time.Second)
