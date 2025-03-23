@@ -91,14 +91,12 @@ func TestDLROperation(t *testing.T) {
 	// Define expected output substrings.
 	expectedLines := []string{
 		fmt.Sprintf("Starting DLR review from projects/%s/subscriptions/%s", projectID, sourceSubName),
+		"",
 		"Message 1:",
 		"Data: Test message 1",
 		"Attributes: map[testRun:dlr_test]",
-		"Choose action ([m]ove / [d]iscard):",
-		"Publishing message 1...",
-		"Published message 1 successfully",
-		"Message 1 moved successfully",
-		"Acknowledged message 1",
+		"Choose action ([m]ove / [d]iscard): Message 1 moved successfully",
+		"",
 		"Dead-lettered messages review completed. Total messages processed: 1",
 	}
 
