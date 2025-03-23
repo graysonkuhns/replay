@@ -3,6 +3,7 @@ package testhelpers
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -47,4 +48,21 @@ func PurgeSubscription(ctx context.Context, sub *pubsub.Subscription) error {
 		}
 	}
 	return nil
+}
+
+// PublishTestMessages publishes a slice of test messages to the given topic.
+func PublishTestMessages(ctx context.Context, topic *pubsub.Topic, messages []pubsub.Message) ([]string, error) {
+	var publishIDs []string
+	for i, msg := range messages {
+		log.Printf("Publishing message %d", i+1)
+		result := topic.Publish(ctx, &msg)
+		id, err := result.Get(ctx)
+		if err != nil {
+			log.Printf("Failed to publish message %d: %v", i+1, err)
+			return publishIDs, fmt.Errorf("failed to publish message %d: %w", i+1, err)
+		}
+		log.Printf("Published message %d with id: %s", i+1, id)
+		publishIDs = append(publishIDs, id)
+	}
+	return publishIDs, nil
 }

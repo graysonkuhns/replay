@@ -67,27 +67,25 @@ func TestMoveOperation(t *testing.T) {
 
 	// publish some test messages to the dead letter topic (source topic).
 	sourceTopic := client.Topic(sourceTopicName)
-	var publishIDs []string
 	numMessages := 3
-	testRunValue := "move_test" // new marker for messages
+	testRunValue := "move_test" // marker for messages
 
-	// Log before publishing test messages
-	log.Printf("Publishing %d test messages to dead letter topic: %s", numMessages, sourceTopicName)
+	// Define test messages.
+	var messages []pubsub.Message
 	for i := 1; i <= numMessages; i++ {
-		result := sourceTopic.Publish(ctx, &pubsub.Message{
+		messages = append(messages, pubsub.Message{
 			Data: []byte(fmt.Sprintf("Test message %d", i)),
 			Attributes: map[string]string{
 				"testRun": testRunValue,
 			},
 		})
-		id, err := result.Get(ctx)
-		if err != nil {
-			t.Fatalf("Failed to publish message %d: %v", i, err)
-		}
-		publishIDs = append(publishIDs, id)
-		log.Printf("Published message %d with id: %s", i, id)
 	}
-	log.Printf("Published test messages with ids: %v", publishIDs)
+
+	// Call helper to log and publish test messages.
+	_, err = testhelpers.PublishTestMessages(ctx, sourceTopic, messages)
+	if err != nil {
+		t.Fatalf("Failed to publish test messages: %v", err)
+	}
 
 	// Allow time for the dead letter subscription to receive the published messages.
 	time.Sleep(10 * time.Second)
