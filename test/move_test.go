@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings" // added import for joining expected output lines
 	"testing"
 	"time"
 
@@ -105,15 +106,28 @@ func TestMoveOperation(t *testing.T) {
 	}
 	log.Printf("Move command executed")
 
-	// Define expected output with log lines included.
-	expectedOutput := fmt.Sprintf(
-		"[TIMESTAMP] Moving messages from projects/%s/subscriptions/%s to projects/%s/topics/%s\n"+
-			"[TIMESTAMP] Pulled message 1\n[TIMESTAMP] Publishing message 1\n[TIMESTAMP] Published message 1 successfully\n[TIMESTAMP] Acked message 1\n[TIMESTAMP] Processed message 1\n"+
-			"[TIMESTAMP] Pulled message 2\n[TIMESTAMP] Publishing message 2\n[TIMESTAMP] Published message 2 successfully\n[TIMESTAMP] Acked message 2\n[TIMESTAMP] Processed message 2\n"+
-			"[TIMESTAMP] Pulled message 3\n[TIMESTAMP] Publishing message 3\n[TIMESTAMP] Published message 3 successfully\n[TIMESTAMP] Acked message 3\n[TIMESTAMP] Processed message 3\n"+
-			"[TIMESTAMP] Move operation completed. Total messages moved: %d\n"+
-			"[TIMESTAMP] Move command executed\n",
-		projectID, sourceSubName, projectID, destTopicName, numMessages)
+	// Define expected output with each line on its own code line.
+	expectedLines := []string{
+		fmt.Sprintf("[TIMESTAMP] Moving messages from projects/%s/subscriptions/%s to projects/%s/topics/%s", projectID, sourceSubName, projectID, destTopicName),
+		"[TIMESTAMP] Pulled message 1",
+		"[TIMESTAMP] Publishing message 1",
+		"[TIMESTAMP] Published message 1 successfully",
+		"[TIMESTAMP] Acked message 1",
+		"[TIMESTAMP] Processed message 1",
+		"[TIMESTAMP] Pulled message 2",
+		"[TIMESTAMP] Publishing message 2",
+		"[TIMESTAMP] Published message 2 successfully",
+		"[TIMESTAMP] Acked message 2",
+		"[TIMESTAMP] Processed message 2",
+		"[TIMESTAMP] Pulled message 3",
+		"[TIMESTAMP] Publishing message 3",
+		"[TIMESTAMP] Published message 3 successfully",
+		"[TIMESTAMP] Acked message 3",
+		"[TIMESTAMP] Processed message 3",
+		fmt.Sprintf("[TIMESTAMP] Move operation completed. Total messages moved: %d", numMessages),
+		"[TIMESTAMP] Move command executed",
+	}
+	expectedOutput := strings.Join(expectedLines, "\n") + "\n"
 
 	if actual != expectedOutput {
 		t.Fatalf("CLI output mismatch.\nExpected (with timestamps replaced):\n%q\nGot:\n%q", expectedOutput, actual)
