@@ -7,59 +7,19 @@ import (
 	"log"
 	"os"
 	"regexp"
-	"strings"
 	"testing"
 	"time"
 
 	"cloud.google.com/go/pubsub"
 
 	"replay/cmd"
-
-	pubsubapiv1 "cloud.google.com/go/pubsub/apiv1"
-	pubsubpb "cloud.google.com/go/pubsub/apiv1/pubsubpb" // updated import: using new package
+	"replay/test/testhelpers" // added helper import
+	// updated import: using new package
 )
 
 // Added init function to log at startup
 func init() {
 	log.Printf("Test suite initialization: logs are enabled")
-}
-
-// helper to purge a subscription by polling with low-level client.
-func purgeSubscription(ctx context.Context, sub *pubsub.Subscription) error {
-	subResource := sub.String() // assumes full resource name (e.g. projects/<proj>/subscriptions/<sub>)
-	subscriberClient, err := pubsubapiv1.NewSubscriberClient(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create subscriber client: %w", err)
-	}
-	defer subscriberClient.Close()
-
-	for {
-		pollCtx, pollCancel := context.WithTimeout(ctx, 5*time.Second)
-		req := &pubsubpb.PullRequest{
-			Subscription: subResource,
-			MaxMessages:  1,
-		}
-		resp, err := subscriberClient.Pull(pollCtx, req)
-		pollCancel()
-		if err != nil {
-			// assume timeout means no more messages available
-			if strings.Contains(err.Error(), "DeadlineExceeded") {
-				break
-			}
-			return fmt.Errorf("error during pull: %w", err)
-		}
-		if len(resp.ReceivedMessages) == 0 {
-			break
-		}
-		ackReq := &pubsubpb.AcknowledgeRequest{
-			Subscription: subResource,
-			AckIds:       []string{resp.ReceivedMessages[0].AckId},
-		}
-		if err := subscriberClient.Acknowledge(ctx, ackReq); err != nil {
-			return fmt.Errorf("failed to acknowledge message: %w", err)
-		}
-	}
-	return nil
 }
 
 func TestMoveOperation(t *testing.T) {
@@ -90,7 +50,7 @@ func TestMoveOperation(t *testing.T) {
 
 	// Log before purging the source subscription
 	log.Printf("Purging source subscription: %s", sourceSubName)
-	if err := purgeSubscription(ctx, sourceSub); err != nil {
+	if err := testhelpers.PurgeSubscription(ctx, sourceSub); err != nil {
 		t.Fatalf("Failed to purge source subscription: %v", err)
 	}
 	log.Printf("Completed purge of source subscription: %s", sourceSubName)
@@ -100,7 +60,7 @@ func TestMoveOperation(t *testing.T) {
 	destSubPurge := client.Subscription("default-events-subscription")
 	destCtx, destCancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer destCancel()
-	if err := purgeSubscription(destCtx, destSubPurge); err != nil {
+	if err := testhelpers.PurgeSubscription(destCtx, destSubPurge); err != nil {
 		t.Fatalf("Failed to purge destination subscription: %v", err)
 	}
 	log.Printf("Completed purge of destination subscription: default-events-subscription")
