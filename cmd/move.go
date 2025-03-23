@@ -15,7 +15,9 @@ import (
 	"cloud.google.com/go/pubsub"
 	pubsubapiv1 "cloud.google.com/go/pubsub/apiv1"
 	"github.com/spf13/cobra"
-	pubsubpb "google.golang.org/genproto/googleapis/pubsub/v1"
+
+	// Updated deprecated package import:
+	"cloud.google.com/go/pubsub/apiv1/pubsubpb"
 )
 
 // moveCmd represents the move command
