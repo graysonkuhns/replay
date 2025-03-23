@@ -105,12 +105,16 @@ func TestMoveOperation(t *testing.T) {
 	sourceTopic := client.Topic(sourceTopicName)
 	var publishIDs []string
 	numMessages := 3
+	testRunValue := "move_test" // new marker for messages
 
 	// Log before publishing test messages
 	log.Printf("Publishing %d test messages to dead letter topic: %s", numMessages, sourceTopicName)
 	for i := 1; i <= numMessages; i++ {
 		result := sourceTopic.Publish(ctx, &pubsub.Message{
 			Data: []byte(fmt.Sprintf("Test message %d", i)),
+			Attributes: map[string]string{
+				"testRun": testRunValue,
+			},
 		})
 		id, err := result.Get(ctx)
 		if err != nil {
@@ -161,8 +165,13 @@ func TestMoveOperation(t *testing.T) {
 	cctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	err = destSub.Receive(cctx, func(ctx context.Context, m *pubsub.Message) {
-		log.Printf("Received message: %s", string(m.Data))
-		received = append(received, m)
+		// Only count messages from our test run
+		if m.Attributes["testRun"] == testRunValue {
+			log.Printf("Received test message: %s", string(m.Data))
+			received = append(received, m)
+		} else {
+			log.Printf("Ignoring non-test message: %s", string(m.Data))
+		}
 		m.Ack()
 		if len(received) >= numMessages {
 			cancel()
