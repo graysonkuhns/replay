@@ -4,8 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
-	"strings" // added import for joining expected output lines
+	"os" // added import for joining expected output lines
 	"testing"
 	"time"
 
@@ -126,16 +125,12 @@ func TestMoveOperation(t *testing.T) {
 		"[TIMESTAMP] Processed message 3",
 		fmt.Sprintf("[TIMESTAMP] Move operation completed. Total messages moved: %d", numMessages),
 	}
-	expectedOutput := strings.Join(expectedLines, "\n") + "\n"
 
-	if actual != expectedOutput {
-		// Split actual output into individual lines.
-		actualLines := strings.Split(strings.TrimSpace(actual), "\n")
-		// Format expected and actual outputs to show one line per code line.
-		expectedStr := strings.Join(expectedLines, "\n")
-		actualStr := strings.Join(actualLines, "\n")
-		t.Fatalf("CLI output mismatch.\nExpected output:\n%s\nActual output:\n%s", expectedStr, actualStr)
-	}
+	// Replace inline CLI output assertion:
+	// if actual != expectedOutput {
+	// 	// ...existing inline code...
+	// }
+	testhelpers.AssertCLIOutput(t, actual, expectedLines)
 
 	// Allow time for messages to propagate to the destination.
 	time.Sleep(5 * time.Second)
