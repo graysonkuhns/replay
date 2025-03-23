@@ -1,18 +1,15 @@
 package cmd_test
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"log"
 	"os"
-	"regexp"
 	"testing"
 	"time"
 
 	"cloud.google.com/go/pubsub"
 
-	"replay/cmd"
 	"replay/test/testhelpers" // added helper import
 	// updated import: using new package
 )
@@ -92,8 +89,6 @@ func TestMoveOperation(t *testing.T) {
 	log.Printf("Completed waiting for dead letter subscription to receive messages")
 
 	// Set up the CLI command arguments for the move operation.
-	// Here the move command will pull messages from the dead letter subscription and
-	// publish them to the normal events topic.
 	moveArgs := []string{
 		"move",
 		"--source-type", "GCP_PUBSUB_SUBSCRIPTION",
@@ -103,37 +98,12 @@ func TestMoveOperation(t *testing.T) {
 		"--count", fmt.Sprintf("%d", numMessages),
 	}
 
-	// Log before executing move command
-	log.Printf("Executing move command with args: %v", moveArgs)
-	origArgs := os.Args
-	defer func() { os.Args = origArgs }()
-	os.Args = append([]string{"replay"}, moveArgs...)
-
-	// Capture CLI output using os.Pipe.
-	r, w, err := os.Pipe()
+	// Run CLI command using test helper.
+	actual, err := testhelpers.RunCLICommand(moveArgs)
 	if err != nil {
-		t.Fatalf("Failed to create pipe: %v", err)
+		t.Fatalf("Error running CLI command: %v", err)
 	}
-	oldOut := os.Stdout
-	os.Stdout = w
-	// Run the move command.
-	cmd.Execute()
 	log.Printf("Move command executed")
-	// Restore os.Stdout.
-	w.Close()
-	os.Stdout = oldOut
-
-	// Read captured output.
-	var buf bytes.Buffer
-	if _, err := buf.ReadFrom(r); err != nil {
-		t.Fatalf("Failed to read captured output: %v", err)
-	}
-	r.Close()
-
-	// Replace timestamp parts with a token.
-	actual := buf.String()
-	tsRe := regexp.MustCompile(`\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}`)
-	actual = tsRe.ReplaceAllString(actual, "[TIMESTAMP]")
 
 	// Define expected output with log lines included.
 	expectedOutput := fmt.Sprintf(
