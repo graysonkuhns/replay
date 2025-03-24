@@ -1,12 +1,12 @@
 /*
 Copyright © 2025 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
 import (
 	"bufio"
 	"context"
+	"encoding/json" // added
 	"fmt"
 	"log"
 	"os"
@@ -32,6 +32,7 @@ For moved messages, the message is republished to the destination.`,
 		source, _ := cmd.Flags().GetString("source")
 		destination, _ := cmd.Flags().GetString("destination")
 		count, _ := cmd.Flags().GetInt("count")
+		pretty, _ := cmd.Flags().GetBool("pretty-json")
 		// Validate supported types
 		if sourceType != "GCP_PUBSUB_SUBSCRIPTION" {
 			fmt.Printf("Error: unsupported source type: %s. Supported: GCP_PUBSUB_SUBSCRIPTION\n", sourceType)
@@ -103,11 +104,24 @@ For moved messages, the message is republished to the destination.`,
 				break
 			}
 			receivedMsg := resp.ReceivedMessages[0]
-				processed = msgNum
+			processed = msgNum
 
 			// Show message details and prompt for action
 			fmt.Printf("\nMessage %d:\n", msgNum)
-			fmt.Printf("Data: %s\n", string(receivedMsg.Message.Data))
+			if pretty {
+				var jsonData interface{}
+				if err := json.Unmarshal(receivedMsg.Message.Data, &jsonData); err == nil {
+					if prettyBytes, err := json.MarshalIndent(jsonData, "", "  "); err == nil {
+						fmt.Printf("Data (pretty JSON): %s\n", string(prettyBytes))
+					} else {
+						fmt.Printf("Data: %s\n", string(receivedMsg.Message.Data))
+					}
+				} else {
+					fmt.Printf("Data: %s\n", string(receivedMsg.Message.Data))
+				}
+			} else {
+				fmt.Printf("Data: %s\n", string(receivedMsg.Message.Data))
+			}
 			fmt.Printf("Attributes: %v\n", receivedMsg.Message.Attributes)
 			fmt.Print("Choose action ([m]ove / [d]iscard): ")
 			input, _ := reader.ReadString('\n')
@@ -158,6 +172,7 @@ func init() {
 	dlrCmd.Flags().String("source", "", "Full source resource name (e.g. projects/<proj>/subscriptions/<sub>)")
 	dlrCmd.Flags().String("destination", "", "Full destination resource name (e.g. projects/<proj>/topics/<topic>)")
 	dlrCmd.Flags().Int("count", 0, "Number of messages to process (0 for all messages)")
+	dlrCmd.Flags().Bool("pretty-json", false, "Display message data as pretty JSON")
 	dlrCmd.MarkFlagRequired("source-type")
 	dlrCmd.MarkFlagRequired("destination-type")
 	dlrCmd.MarkFlagRequired("source")
