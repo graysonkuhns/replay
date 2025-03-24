@@ -115,13 +115,13 @@ For moved messages, the message is republished to the destination.`,
 					if prettyBytes, err := json.MarshalIndent(jsonData, "", "  "); err == nil {
 						fmt.Printf("Data (pretty JSON):\n%s\n", string(prettyBytes))
 					} else {
-						fmt.Printf("Data: \n%s\n", string(receivedMsg.Message.Data))
+						fmt.Printf("Data:\n%s\n", string(receivedMsg.Message.Data))
 					}
 				} else {
-					fmt.Printf("Data: %s\n", string(receivedMsg.Message.Data))
+					fmt.Printf("Data:\n%s\n", string(receivedMsg.Message.Data))
 				}
 			} else {
-				fmt.Printf("Data: %s\n", string(receivedMsg.Message.Data))
+				fmt.Printf("Data:\n%s\n", string(receivedMsg.Message.Data))
 			}
 			fmt.Printf("Attributes: %v\n", receivedMsg.Message.Attributes)
 			fmt.Print("Choose action ([m]ove / [d]iscard / [q]uit): ")
