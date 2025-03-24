@@ -33,6 +33,7 @@ For moved messages, the message is republished to the destination.`,
 		destination, _ := cmd.Flags().GetString("destination")
 		count, _ := cmd.Flags().GetInt("count")
 		pretty, _ := cmd.Flags().GetBool("pretty-json")
+		pollTimeoutSec, _ := cmd.Flags().GetInt("polling-timeout-seconds")
 		// Validate supported types
 		if sourceType != "GCP_PUBSUB_SUBSCRIPTION" {
 			fmt.Printf("Error: unsupported source type: %s. Supported: GCP_PUBSUB_SUBSCRIPTION\n", sourceType)
@@ -84,7 +85,7 @@ For moved messages, the message is republished to the destination.`,
 		for {
 			msgNum := processed + 1
 			log.Printf("Polling for message %d...", msgNum)
-			pollCtx, pollCancel := context.WithTimeout(ctx, 5*time.Second)
+			pollCtx, pollCancel := context.WithTimeout(ctx, time.Duration(pollTimeoutSec)*time.Second)
 			req := &pubsubpb.PullRequest{
 				Subscription: source,
 				MaxMessages:  1,
@@ -173,6 +174,7 @@ func init() {
 	dlrCmd.Flags().String("destination", "", "Full destination resource name (e.g. projects/<proj>/topics/<topic>)")
 	dlrCmd.Flags().Int("count", 0, "Number of messages to process (0 for all messages)")
 	dlrCmd.Flags().Bool("pretty-json", false, "Display message data as pretty JSON")
+	dlrCmd.Flags().Int("polling-timeout-seconds", 5, "Timeout in seconds for polling a single message")
 	dlrCmd.MarkFlagRequired("source-type")
 	dlrCmd.MarkFlagRequired("destination-type")
 	dlrCmd.MarkFlagRequired("source")

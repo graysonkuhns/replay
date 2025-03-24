@@ -33,6 +33,7 @@ Each message is polled, published, and acknowledged sequentially.`,
 		source, _ := cmd.Flags().GetString("source")
 		destination, _ := cmd.Flags().GetString("destination")
 		count, _ := cmd.Flags().GetInt("count")
+		pollTimeoutSec, _ := cmd.Flags().GetInt("polling-timeout-seconds")
 
 		// Validate supported types
 		if sourceType != "GCP_PUBSUB_SUBSCRIPTION" {
@@ -91,7 +92,7 @@ Each message is polled, published, and acknowledged sequentially.`,
 
 		// Loop to pull a single message with 5-second timeout per poll.
 		for {
-			pollCtx, pollCancel := context.WithTimeout(ctx, 5*time.Second)
+			pollCtx, pollCancel := context.WithTimeout(ctx, time.Duration(pollTimeoutSec)*time.Second)
 			req := &pubsubpb.PullRequest{
 				Subscription: source,
 				MaxMessages:  1,
@@ -163,6 +164,7 @@ func init() {
 	moveCmd.Flags().String("source", "", "Full source resource name (e.g. projects/<proj>/subscriptions/<sub>)")
 	moveCmd.Flags().String("destination", "", "Full destination resource name (e.g. projects/<proj>/topics/<topic>)")
 	moveCmd.Flags().Int("count", 0, "Number of messages to move (0 for default 3)")
+	moveCmd.Flags().Int("polling-timeout-seconds", 5, "Timeout in seconds for polling a single message")
 
 	// Make flags required except for count
 	moveCmd.MarkFlagRequired("source-type")
