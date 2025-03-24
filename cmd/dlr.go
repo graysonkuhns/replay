@@ -113,9 +113,9 @@ For moved messages, the message is republished to the destination.`,
 				var jsonData interface{}
 				if err := json.Unmarshal(receivedMsg.Message.Data, &jsonData); err == nil {
 					if prettyBytes, err := json.MarshalIndent(jsonData, "", "  "); err == nil {
-						fmt.Printf("Data (pretty JSON): %s\n", string(prettyBytes))
+						fmt.Printf("Data (pretty JSON):\n%s\n", string(prettyBytes))
 					} else {
-						fmt.Printf("Data: %s\n", string(receivedMsg.Message.Data))
+						fmt.Printf("Data: \n%s\n", string(receivedMsg.Message.Data))
 					}
 				} else {
 					fmt.Printf("Data: %s\n", string(receivedMsg.Message.Data))
