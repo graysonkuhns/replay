@@ -124,7 +124,7 @@ For moved messages, the message is republished to the destination.`,
 				fmt.Printf("Data: %s\n", string(receivedMsg.Message.Data))
 			}
 			fmt.Printf("Attributes: %v\n", receivedMsg.Message.Attributes)
-			fmt.Print("Choose action ([m]ove / [d]iscard): ")
+			fmt.Print("Choose action ([m]ove / [d]iscard / [q]uit): ")
 			input, _ := reader.ReadString('\n')
 			input = strings.TrimSpace(strings.ToLower(input))
 			if input == "m" {
@@ -142,6 +142,9 @@ For moved messages, the message is republished to the destination.`,
 				fmt.Printf("Message %d moved successfully\n", msgNum)
 			} else if input == "d" {
 				fmt.Printf("Message %d discarded (acked)\n", msgNum)
+			} else if input == "q" {
+				fmt.Printf("Quitting review...\n")
+				break
 			} else {
 				fmt.Printf("Invalid input. Skipping message %d\n", msgNum)
 			}
