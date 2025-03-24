@@ -55,3 +55,5 @@ replay dlr \
   --source projects/[project]/subscriptions/[name] \
   --destination projects/[project]/topics/[name]
 ```
+
+- Use the --pretty-json flag to display message data as formatted JSON.
