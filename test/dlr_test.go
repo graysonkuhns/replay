@@ -42,20 +42,28 @@ func TestDLROperation(t *testing.T) {
 		t.Fatalf("Failed to purge source subscription: %v", err)
 	}
 
-	// Publish one test message to the dead-letter topic.
+	// Publish two test messages to the dead-letter topic: one to move and one to discard.
 	sourceTopic := client.Topic(sourceTopicName)
-	message := pubsub.Message{
-		Data: []byte("Test message 1"),
-		Attributes: map[string]string{
-			"testRun": testRunValue,
+	messages := []pubsub.Message{
+		{
+			Data: []byte("Test message move"),
+			Attributes: map[string]string{
+				"testRun": testRunValue,
+			},
+		},
+		{
+			Data: []byte("Test message discard"),
+			Attributes: map[string]string{
+				"testRun": testRunValue,
+			},
 		},
 	}
-	_, err = testhelpers.PublishTestMessages(ctx, sourceTopic, []pubsub.Message{message})
+	_, err = testhelpers.PublishTestMessages(ctx, sourceTopic, messages)
 	if err != nil {
-		t.Fatalf("Failed to publish test message: %v", err)
+		t.Fatalf("Failed to publish test messages: %v", err)
 	}
 
-	// Wait for the message to propagate to the dead-letter subscription.
+	// Wait for the messages to propagate to the dead-letter subscription.
 	time.Sleep(10 * time.Second)
 
 	// Prepare CLI arguments for the dlr command.
@@ -67,14 +75,14 @@ func TestDLROperation(t *testing.T) {
 		"--destination", fmt.Sprintf("projects/%s/topics/%s", projectID, destTopicName),
 	}
 
-	// Simulate user input "m" for moving the message.
+	// Simulate user inputs: "m" for moving message 1 and "d" for discarding message 2.
 	origStdin := os.Stdin
 	r, w, err := os.Pipe()
 	if err != nil {
 		t.Fatalf("Failed to create pipe for stdin: %v", err)
 	}
-	// Write simulated input and close the writer.
-	_, err = io.WriteString(w, "m\n")
+	// Write simulated inputs and close the writer.
+	_, err = io.WriteString(w, "m\nd\n")
 	if err != nil {
 		t.Fatalf("Failed to write simulated input: %v", err)
 	}
@@ -93,11 +101,16 @@ func TestDLROperation(t *testing.T) {
 		fmt.Sprintf("Starting DLR review from projects/%s/subscriptions/%s", projectID, sourceSubName),
 		"",
 		"Message 1:",
-		"Data: Test message 1",
+		"Data: Test message move",
 		"Attributes: map[testRun:dlr_test]",
 		"Choose action ([m]ove / [d]iscard): Message 1 moved successfully",
 		"",
-		"Dead-lettered messages review completed. Total messages processed: 1",
+		"Message 2:",
+		"Data: Test message discard",
+		"Attributes: map[testRun:dlr_test]",
+		"Choose action ([m]ove / [d]iscard): Message 2 discarded (acked)",
+		"",
+		"Dead-lettered messages review completed. Total messages processed: 2",
 	}
 
 	testhelpers.AssertCLIOutput(t, actual, expectedLines)
@@ -115,4 +128,13 @@ func TestDLROperation(t *testing.T) {
 		t.Fatalf("Expected 1 moved message, got %d", len(received))
 	}
 	log.Printf("Successfully moved and received %d message", len(received))
+
+	// Verify that the discarded message is no longer in the source subscription.
+	sourceReceived, err := testhelpers.PollMessages(ctx, sourceSub, testRunValue, 0)
+	if err != nil {
+		t.Fatalf("Error polling source subscription: %v", err)
+	}
+	if len(sourceReceived) != 0 {
+		t.Fatalf("Expected 0 messages in source subscription, got %d", len(sourceReceived))
+	}
 }
