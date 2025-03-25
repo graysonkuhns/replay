@@ -4,6 +4,7 @@
 
 * Docs
   * Update embedded copy in command docs
+  * Don't keep generateDocs command within shipped binary
 * Integration testing
   * Move command
     * Test with --count flag
