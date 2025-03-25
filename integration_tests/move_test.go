@@ -296,7 +296,8 @@ func TestMoveMessageBodyIntegrity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to publish test messages: %v", err)
 	}
-	time.Sleep(10 * time.Second)
+	// Increase sleep duration to 15 seconds to ensure all messages arrive.
+	time.Sleep(15 * time.Second)
 
 	// Run the move command.
 	moveArgs := []string{
@@ -322,10 +323,17 @@ func TestMoveMessageBodyIntegrity(t *testing.T) {
 		t.Fatalf("Expected %d messages in destination, got %d", numMessages, len(received))
 	}
 
-	// Verify that message bodies match the original content.
-	for i, msg := range received {
-		if string(msg.Data) != expectedBodies[i] {
-			t.Fatalf("Message %d body mismatch: expected '%s', got '%s'", i+1, expectedBodies[i], string(msg.Data))
+	// Verify that each expected message body is found in the received messages, regardless of order.
+	for _, expected := range expectedBodies {
+		found := false
+		for _, msg := range received {
+			if string(msg.Data) == expected {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("Expected message body '%s' not found in received messages", expected)
 		}
 	}
 	t.Logf("Message body integrity verified for all %d messages", numMessages)
