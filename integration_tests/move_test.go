@@ -243,3 +243,90 @@ func TestMoveOperationWithCount(t *testing.T) {
 
 	t.Logf("Successfully moved %d messages and found %d remaining in source", moveCount, numMessages-moveCount)
 }
+
+func TestMoveMessageBodyIntegrity(t *testing.T) {
+	// New test to verify that the body content of moved messages remains unchanged.
+	ctx := context.Background()
+	projectID := os.Getenv("GCP_PROJECT")
+	if projectID == "" {
+		t.Fatal("GCP_PROJECT environment variable must be set")
+	}
+	// Use same names as other tests.
+	sourceTopicName := "default-events-dead-letter"
+	sourceSubName := "default-events-dead-letter-subscription"
+	destTopicName := "default-events"
+	destSubName := "default-events-subscription"
+
+	client, err := pubsub.NewClient(ctx, projectID)
+	if err != nil {
+		t.Fatalf("Failed to create PubSub client: %v", err)
+	}
+	defer client.Close()
+
+	// Purge subscriptions.
+	sourceSub := client.Subscription(sourceSubName)
+	if err := testhelpers.PurgeSubscription(ctx, sourceSub); err != nil {
+		t.Fatalf("Failed to purge source subscription: %v", err)
+	}
+	destSub := client.Subscription(destSubName)
+	destCtx, destCancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer destCancel()
+	if err := testhelpers.PurgeSubscription(destCtx, destSub); err != nil {
+		t.Fatalf("Failed to purge destination subscription: %v", err)
+	}
+
+	// Prepare messages with unique body content.
+	numMessages := 3
+	testRunValue := "move_test_body_integrity"
+	sourceTopic := client.Topic(sourceTopicName)
+	var messages []pubsub.Message
+	var expectedBodies []string
+	for i := 1; i <= numMessages; i++ {
+		body := fmt.Sprintf("Integrity Test message %d", i)
+		expectedBodies = append(expectedBodies, body)
+		messages = append(messages, pubsub.Message{
+			Data: []byte(body),
+			Attributes: map[string]string{
+				"testRun": testRunValue,
+			},
+		})
+	}
+
+	_, err = testhelpers.PublishTestMessages(ctx, sourceTopic, messages)
+	if err != nil {
+		t.Fatalf("Failed to publish test messages: %v", err)
+	}
+	time.Sleep(10 * time.Second)
+
+	// Run the move command.
+	moveArgs := []string{
+		"move",
+		"--source-type", "GCP_PUBSUB_SUBSCRIPTION",
+		"--destination-type", "GCP_PUBSUB_TOPIC",
+		"--source", fmt.Sprintf("projects/%s/subscriptions/%s", projectID, sourceSubName),
+		"--destination", fmt.Sprintf("projects/%s/topics/%s", projectID, destTopicName),
+		"--count", fmt.Sprintf("%d", numMessages),
+	}
+	actual, err := testhelpers.RunCLICommand(moveArgs)
+	if err != nil {
+		t.Fatalf("Error running CLI command: %v", err)
+	}
+	t.Logf("Move command executed for body integrity test: %s", actual)
+
+	// Poll the destination subscription.
+	received, err := testhelpers.PollMessages(ctx, destSub, testRunValue, numMessages)
+	if err != nil {
+		t.Fatalf("Error receiving messages from destination: %v", err)
+	}
+	if len(received) != numMessages {
+		t.Fatalf("Expected %d messages in destination, got %d", numMessages, len(received))
+	}
+
+	// Verify that message bodies match the original content.
+	for i, msg := range received {
+		if string(msg.Data) != expectedBodies[i] {
+			t.Fatalf("Message %d body mismatch: expected '%s', got '%s'", i+1, expectedBodies[i], string(msg.Data))
+		}
+	}
+	t.Logf("Message body integrity verified for all %d messages", numMessages)
+}
