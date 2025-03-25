@@ -50,6 +50,10 @@ replay dlr \
 
 - Use the --pretty-json flag to display message data as formatted JSON.
 
+## Full CLI Usage Documentation
+
+[Click here](./docs/replay.md) to view the full CLI usage documentation.
+
 ## Versioning
 
 This project follows Semantic Versioning 2.0 guidelines: 
