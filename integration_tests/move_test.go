@@ -79,7 +79,6 @@ func TestMoveOperation(t *testing.T) {
 		"--destination-type", "GCP_PUBSUB_TOPIC",
 		"--source", fmt.Sprintf("projects/%s/subscriptions/%s", projectID, sourceSubName),
 		"--destination", fmt.Sprintf("projects/%s/topics/%s", projectID, destTopicName),
-		"--count", fmt.Sprintf("%d", numMessages),
 	}
 
 	actual, err := testhelpers.RunCLICommand(moveArgs)
@@ -106,6 +105,7 @@ func TestMoveOperation(t *testing.T) {
 		"[TIMESTAMP] Published message 3 successfully",
 		"[TIMESTAMP] Acked message 3",
 		"[TIMESTAMP] Processed message 3",
+		"[TIMESTAMP] No messages received within timeout",
 		fmt.Sprintf("[TIMESTAMP] Move operation completed. Total messages moved: %d", numMessages),
 	}
 
