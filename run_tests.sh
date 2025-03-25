@@ -14,4 +14,4 @@ if [ -z "$GCP_PROJECT" ]; then
 fi
 
 echo "Running all tests..."
-go test -count 1 -v ./test
+go test -count 1 -v ./integration_tests

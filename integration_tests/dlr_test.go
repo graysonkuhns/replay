@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"replay/test/testhelpers"
+	"replay/integration_tests/testhelpers"
 
 	"cloud.google.com/go/pubsub"
 )

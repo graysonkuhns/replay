@@ -10,7 +10,7 @@ import (
 
 	"cloud.google.com/go/pubsub"
 
-	"replay/test/testhelpers"
+	"replay/integration_tests/testhelpers"
 )
 
 func init() {
