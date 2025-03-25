@@ -7,9 +7,8 @@
   * Don't keep generateDocs command within shipped binary
 * Integration testing
   * Move command
-    * Test with --count flag
-    * Test with additional payload types
     * Test that the message body is the same as expected
+    * Test with additional payload types
       * Plain text
       * Avro
       * Protobuf
