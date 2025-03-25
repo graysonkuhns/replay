@@ -17,8 +17,8 @@ func init() {
 	log.Printf("Test suite initialization: logs are enabled")
 }
 
-func TestMoveOperation(t *testing.T) {
-	log.Printf("Starting TestMoveOperation")
+func TestMoveStopsWhenSourceExhausted(t *testing.T) {
+	log.Printf("Starting TestMoveStopsWhenSourceExhausted: verifying stop when source runs out of messages")
 	ctx := context.Background()
 	projectID := os.Getenv("GCP_PROJECT")
 	if projectID == "" {
