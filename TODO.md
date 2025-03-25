@@ -3,8 +3,7 @@
 ## v0.1.0
 
 * Docs
-  * Document DLR --pretty-json flag
-  * Document --polling-timeout-seconds flag
+  * Update embedded copy in command docs
 * Integration testing
   * Move command
     * Test with --count flag
