@@ -16,7 +16,6 @@
   * DLR command
     * Test quit option
     * Test with --pretty-json flag
-    * Test that the message body is the same as expected
     * Test that the correct messages were moved and the correct messages were discarded
     * Test with additional payload types
       * Plain text
