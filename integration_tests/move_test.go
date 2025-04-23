@@ -65,7 +65,7 @@ func TestMoveStopsWhenSourceExhausted(t *testing.T) {
 		})
 	}
 
-	_, err = testhelpers.PublishTestMessages(ctx, sourceTopic, messages)
+	_, err = testhelpers.PublishTestMessages(ctx, sourceTopic, messages, "test-ordering-key")
 	if err != nil {
 		t.Fatalf("Failed to publish test messages: %v", err)
 	}
@@ -177,7 +177,7 @@ func TestMoveOperationWithCount(t *testing.T) {
 		})
 	}
 
-	_, err = testhelpers.PublishTestMessages(ctx, sourceTopic, messages)
+	_, err = testhelpers.PublishTestMessages(ctx, sourceTopic, messages, "test-ordering-key")
 	if err != nil {
 		t.Fatalf("Failed to publish test messages: %v", err)
 	}
@@ -292,7 +292,7 @@ func TestMoveMessageBodyIntegrity(t *testing.T) {
 		})
 	}
 
-	_, err = testhelpers.PublishTestMessages(ctx, sourceTopic, messages)
+	_, err = testhelpers.PublishTestMessages(ctx, sourceTopic, messages, "test-ordering-key")
 	if err != nil {
 		t.Fatalf("Failed to publish test messages: %v", err)
 	}
