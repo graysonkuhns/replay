@@ -23,6 +23,7 @@ resource "google_pubsub_subscription" "events" {
     max_delivery_attempts = 5
   }
   ack_deadline_seconds = 10
+  enable_message_ordering = true
 }
 
 resource "google_pubsub_subscription" "events_dead_letter" {
@@ -32,4 +33,5 @@ resource "google_pubsub_subscription" "events_dead_letter" {
     environment = local.environment
   }
   ack_deadline_seconds = 10
+  enable_message_ordering = true
 }
