@@ -105,7 +105,6 @@ For moved messages, the message is republished to the destination.`,
 				break
 			}
 			receivedMsg := resp.ReceivedMessages[0]
-			processed = msgNum
 
 			// Show message details and prompt for action
 			fmt.Printf("\nMessage %d:\n", msgNum)
@@ -158,11 +157,13 @@ For moved messages, the message is republished to the destination.`,
 			} else {
 				log.Printf("Acknowledged message %d", msgNum)
 			}
+
+            processed++
+
 			if count > 0 && processed >= count {
 				break
 			}
 		}
-
 		fmt.Printf("\nDead-lettered messages review completed. Total messages processed: %d\n", processed)
 	},
 }
