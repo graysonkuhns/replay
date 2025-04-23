@@ -22,6 +22,7 @@ resource "google_pubsub_subscription" "events" {
     dead_letter_topic     = google_pubsub_topic.events_dead_letter.id
     max_delivery_attempts = 5
   }
+  ack_deadline_seconds = 10
 }
 
 resource "google_pubsub_subscription" "events_dead_letter" {
@@ -30,5 +31,5 @@ resource "google_pubsub_subscription" "events_dead_letter" {
   labels = {
     environment = local.environment
   }
-  ack_deadline_seconds = 600
+  ack_deadline_seconds = 10
 }
