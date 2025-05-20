@@ -10,7 +10,6 @@
       * Protobuf
       * YAML
   * DLR command
-    * Test that the correct messages were moved and the correct messages were discarded
     * Test with additional payload types
       * Plain text
       * Avro
