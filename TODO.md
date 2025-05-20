@@ -10,7 +10,6 @@
       * Protobuf
       * YAML
   * DLR command
-    * Test with --pretty-json flag
     * Test that the correct messages were moved and the correct messages were discarded
     * Test with additional payload types
       * Plain text
