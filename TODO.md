@@ -3,7 +3,6 @@
 ## v0.1.0
 
 * Docs
-  * Update embedded copy in command docs
   * Don't keep generateDocs command within shipped binary
 * Integration testing
   * Move command
