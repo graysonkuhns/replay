@@ -53,7 +53,7 @@ func TestDLRMessageBodyIntegrity(t *testing.T) {
 	sourceTopic := client.Topic(sourceTopicName)
 	var messages []pubsub.Message
 	var expectedBodies []string
-	
+
 	for i := 1; i <= numMessages; i++ {
 		body := fmt.Sprintf("DLR Integrity Test message %d", i)
 		expectedBodies = append(expectedBodies, body)
@@ -69,7 +69,7 @@ func TestDLRMessageBodyIntegrity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to publish test messages: %v", err)
 	}
-	time.Sleep(15 * time.Second)  // Wait for messages to arrive in the subscription
+	time.Sleep(15 * time.Second) // Wait for messages to arrive in the subscription
 
 	// Prepare CLI arguments for the dlr command.
 	dlrArgs := []string{
@@ -86,13 +86,13 @@ func TestDLRMessageBodyIntegrity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create pipe for stdin: %v", err)
 	}
-	
+
 	// Write "m" for each message to move them all
 	var inputs string
 	for i := 0; i < numMessages; i++ {
 		inputs += "m\n"
 	}
-	
+
 	_, err = io.WriteString(w, inputs)
 	if err != nil {
 		t.Fatalf("Failed to write simulated input: %v", err)
@@ -106,7 +106,7 @@ func TestDLRMessageBodyIntegrity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error running CLI command: %v", err)
 	}
-	
+
 	// Define expected output substrings.
 	expectedLines := []string{
 		fmt.Sprintf("Starting DLR review from projects/%s/subscriptions/%s", projectID, sourceSubName),
@@ -131,7 +131,7 @@ func TestDLRMessageBodyIntegrity(t *testing.T) {
 		"",
 		"Dead-lettered messages review completed. Total messages processed: 3",
 	}
-	
+
 	testhelpers.AssertCLIOutput(t, actual, expectedLines)
 	t.Logf("DLR command executed for body integrity test")
 
@@ -160,7 +160,7 @@ func TestDLRMessageBodyIntegrity(t *testing.T) {
 			t.Fatalf("Expected message body '%s' not found in received messages", expected)
 		}
 	}
-	
+
 	// Verify that the source subscription is empty (all messages were moved)
 	sourceReceived, err := testhelpers.PollMessages(ctx, sourceSub, testRunValue, 0)
 	if err != nil {
@@ -169,6 +169,6 @@ func TestDLRMessageBodyIntegrity(t *testing.T) {
 	if len(sourceReceived) != 0 {
 		t.Fatalf("Expected 0 messages in source subscription, got %d", len(sourceReceived))
 	}
-	
+
 	t.Logf("Message body integrity verified for all %d messages moved using DLR operation", numMessages)
 }
