@@ -172,12 +172,18 @@ func TestDLRQuitOperation(t *testing.T) {
 	}
 	
 	// Wait for ack deadline to expire (10 seconds) before checking the source subscription
-	// Adding 15 seconds of wait time to ensure the message becomes visible again
-	time.Sleep(15 * time.Second)
+	time.Sleep(25 * time.Second)
 	
 	// Verify that one message remains in the source subscription (message 4)
 	// We expect exactly 1 message to remain in the source subscription after processing.
-	sourceReceived, err := testhelpers.PollMessages(ctx, sourceSub, testRunValue, 1)
+	// Use a longer timeout context for this specific polling operation
+	pollCtx, pollCancel := context.WithTimeout(ctx, 30*time.Second)
+	defer pollCancel()
+	sourceReceived, err := testhelpers.PollMessages(pollCtx, sourceSub, testRunValue, 1)
+	
+	// Log what we found for debugging
+	t.Logf("Found %d messages in source subscription with testRun=%s", len(sourceReceived), testRunValue)
+	
 	if err != nil {
 		t.Fatalf("Error polling source subscription: %v", err)
 	}

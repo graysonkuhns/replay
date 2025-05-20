@@ -143,22 +143,30 @@ For moved messages, the message is republished to the destination.`,
 				fmt.Printf("Message %d discarded (acked)\n", msgNum)
 			} else if input == "q" {
 				fmt.Printf("Quitting review...\n")
+				// When quitting, do not acknowledge the message
+				// We need to explicitly log this so the test can verify the behavior
+				log.Printf("Leaving message %d unacknowledged in the subscription", msgNum)
 				break
 			} else {
 				fmt.Printf("Invalid input. Skipping message %d\n", msgNum)
 			}
-			// Acknowledge the message
-			ackReq := &pubsubpb.AcknowledgeRequest{
-				Subscription: source,
-				AckIds:       []string{receivedMsg.AckId},
-			}
-			if err := subscriberClient.Acknowledge(ctx, ackReq); err != nil {
-				log.Printf("Failed to acknowledge message %d: %v", msgNum, err)
-			} else {
-				log.Printf("Acknowledged message %d", msgNum)
-			}
 
-            processed++
+			// Only acknowledge the message if the user chose to move or discard it
+			// Skip acknowledgement when quitting to keep the message in the subscription
+			if input == "m" || input == "d" {
+				// Acknowledge the message
+				ackReq := &pubsubpb.AcknowledgeRequest{
+					Subscription: source,
+					AckIds:       []string{receivedMsg.AckId},
+				}
+				if err := subscriberClient.Acknowledge(ctx, ackReq); err != nil {
+					log.Printf("Failed to acknowledge message %d: %v", msgNum, err)
+				} else {
+					log.Printf("Acknowledged message %d", msgNum)
+				}
+
+				processed++
+			}
 
 			if count > 0 && processed >= count {
 				break

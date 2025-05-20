@@ -90,7 +90,7 @@ func PublishTestMessages(ctx context.Context, topic *pubsub.Topic, messages []pu
 // PollMessages polls messages from a subscription and verifies the expected count.
 func PollMessages(ctx context.Context, sub *pubsub.Subscription, testRunValue string, expectedCount int) ([]*pubsub.Message, error) {
 	var received []*pubsub.Message
-	cctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	cctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	err := sub.Receive(cctx, func(ctx context.Context, m *pubsub.Message) {
 		if m.Attributes["testRun"] == testRunValue {
