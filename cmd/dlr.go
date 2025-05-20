@@ -123,9 +123,19 @@ For moved messages, the message is republished to the destination.`,
 				fmt.Printf("Data:\n%s\n", string(receivedMsg.Message.Data))
 			}
 			fmt.Printf("Attributes: %v\n", receivedMsg.Message.Attributes)
-			fmt.Print("Choose action ([m]ove / [d]iscard / [q]uit): ")
-			input, _ := reader.ReadString('\n')
-			input = strings.TrimSpace(strings.ToLower(input))
+
+			// Keep asking for input until a valid option is selected
+			var input string
+			for {
+				fmt.Print("Choose action ([m]ove / [d]iscard / [q]uit): ")
+				input, _ = reader.ReadString('\n')
+				input = strings.TrimSpace(strings.ToLower(input))
+				if input == "m" || input == "d" || input == "q" {
+					break
+				}
+				fmt.Printf("Invalid input. Please enter 'm', 'd', or 'q'.\n")
+			}
+
 			if input == "m" {
 				log.Printf("Publishing message %d...", msgNum)
 				result := topic.Publish(ctx, &pubsub.Message{
@@ -147,8 +157,6 @@ For moved messages, the message is republished to the destination.`,
 				// We need to explicitly log this so the test can verify the behavior
 				log.Printf("Leaving message %d unacknowledged in the subscription", msgNum)
 				break
-			} else {
-				fmt.Printf("Invalid input. Skipping message %d\n", msgNum)
 			}
 
 			// Only acknowledge the message if the user chose to move or discard it
