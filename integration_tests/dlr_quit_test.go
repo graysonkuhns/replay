@@ -181,9 +181,6 @@ func TestDLRQuitOperation(t *testing.T) {
 	defer pollCancel()
 	sourceReceived, err := testhelpers.PollMessages(pollCtx, sourceSub, testRunValue, 1)
 	
-	// Log what we found for debugging
-	t.Logf("Found %d messages in source subscription with testRun=%s", len(sourceReceived), testRunValue)
-	
 	if err != nil {
 		t.Fatalf("Error polling source subscription: %v", err)
 	}
