@@ -14,8 +14,8 @@ import (
 	"cloud.google.com/go/pubsub"
 )
 
-func TestDLRMessageBodyIntegrity(t *testing.T) {
-	// Test to verify that the body content of moved messages remains unchanged when using the DLR operation.
+func TestDLRPlaintextMessageIntegrity(t *testing.T) {
+	// Test to verify that the plaintext body content of moved messages remains unchanged when using the DLR operation.
 	ctx := context.Background()
 	projectID := os.Getenv("GCP_PROJECT")
 	if projectID == "" {
@@ -27,7 +27,7 @@ func TestDLRMessageBodyIntegrity(t *testing.T) {
 	sourceSubName := "default-events-dead-letter-subscription"
 	destTopicName := "default-events"
 	destSubName := "default-events-subscription"
-	testRunValue := "dlr_integrity_test"
+	testRunValue := "dlr_plaintext_integrity_test"
 
 	client, err := pubsub.NewClient(ctx, projectID)
 	if err != nil {
@@ -48,14 +48,14 @@ func TestDLRMessageBodyIntegrity(t *testing.T) {
 		t.Fatalf("Failed to purge destination subscription: %v", err)
 	}
 
-	// Prepare messages with unique body content.
+	// Prepare messages with unique plaintext body content.
 	numMessages := 3
 	sourceTopic := client.Topic(sourceTopicName)
 	var messages []pubsub.Message
 	var expectedBodies []string
 
 	for i := 1; i <= numMessages; i++ {
-		body := fmt.Sprintf("DLR Integrity Test message %d", i)
+		body := fmt.Sprintf("DLR Plaintext Integrity Test message %d", i)
 		expectedBodies = append(expectedBodies, body)
 		messages = append(messages, pubsub.Message{
 			Data: []byte(body),
@@ -113,20 +113,20 @@ func TestDLRMessageBodyIntegrity(t *testing.T) {
 		"",
 		"Message 1:",
 		"Data:",
-		"DLR Integrity Test message 1",
-		"Attributes: map[testRun:dlr_integrity_test]",
+		"DLR Plaintext Integrity Test message 1",
+		"Attributes: map[testRun:dlr_plaintext_integrity_test]",
 		"Choose action ([m]ove / [d]iscard / [q]uit): Message 1 moved successfully",
 		"",
 		"Message 2:",
 		"Data:",
-		"DLR Integrity Test message 2",
-		"Attributes: map[testRun:dlr_integrity_test]",
+		"DLR Plaintext Integrity Test message 2",
+		"Attributes: map[testRun:dlr_plaintext_integrity_test]",
 		"Choose action ([m]ove / [d]iscard / [q]uit): Message 2 moved successfully",
 		"",
 		"Message 3:",
 		"Data:",
-		"DLR Integrity Test message 3",
-		"Attributes: map[testRun:dlr_integrity_test]",
+		"DLR Plaintext Integrity Test message 3",
+		"Attributes: map[testRun:dlr_plaintext_integrity_test]",
 		"Choose action ([m]ove / [d]iscard / [q]uit): Message 3 moved successfully",
 		"",
 		"Dead-lettered messages review completed. Total messages processed: 3",
@@ -170,5 +170,5 @@ func TestDLRMessageBodyIntegrity(t *testing.T) {
 		t.Fatalf("Expected 0 messages in source subscription, got %d", len(sourceReceived))
 	}
 
-	t.Logf("Message body integrity verified for all %d messages moved using DLR operation", numMessages)
+	t.Logf("Plaintext message body integrity verified for all %d messages moved using DLR operation", numMessages)
 }
