@@ -2,8 +2,6 @@
 
 ## v0.1.0
 
-* Docs
-  * Don't keep generateDocs command within shipped binary
 * Integration testing
   * Move command
     * Test with additional payload types

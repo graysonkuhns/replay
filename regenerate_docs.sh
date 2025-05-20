@@ -2,5 +2,5 @@
 
 rm -rf docs
 mkdir -p docs
-go build
-./replay generateDocs
+cd tools/docgen
+go run main.go ../../docs/
