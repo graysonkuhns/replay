@@ -1,4 +1,3 @@
-// filepath: /Users/gkuhns/workspace/replay/integration_tests/dlr_message_integrity_test.go
 package cmd_test
 
 import (

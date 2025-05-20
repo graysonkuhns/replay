@@ -1,4 +1,3 @@
-// filepath: /Users/gkuhns/workspace/replay/integration_tests/dlr_quit_test.go
 package cmd_test
 
 import (
