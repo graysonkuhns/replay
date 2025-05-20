@@ -10,15 +10,10 @@
 * Integration testing
   * Move command
     * Test with additional payload types
-      * Plain text
-      * Avro
-      * Protobuf
-      * YAML
+      * JSON
+      * Large binary messages
   * DLR command
     * Test with additional payload types
       * Large binary messages
-      * Avro
-      * Protobuf
-      * YAML
 * Refactoring
 * Release and provide install instructions using homebrew
