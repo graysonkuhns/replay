@@ -2,6 +2,7 @@
 
 ## v0.1.0
 
+* Display message attributes in a more readable way
 * Bug fixes
   * Don't ack a message when invalid option input was entered
 * DLR command
