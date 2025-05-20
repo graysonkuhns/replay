@@ -15,13 +15,15 @@ import (
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "replay",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
+	Short: "CLI tool for managing dead-lettered messages",
+	Long: `Replay is a CLI tool that helps engineers review and manage dead-lettered messages 
+across multiple message brokers.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+Users can iterate through each dead-lettered message and choose to discard or 
+reprocess it by moving it to a different queue/topic.
+
+Currently supported message brokers:
+- GCP Pub/Sub`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },
