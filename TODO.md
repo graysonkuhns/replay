@@ -2,6 +2,8 @@
 
 ## v0.1.0
 
+* Flaky tests
+  * TestMoveStopsWhenSourceExhausted flakes when running all tests at once
 * DLR command
   * Don't preview entire large messages in the TUI
   * Add option to view an entire large message using less
