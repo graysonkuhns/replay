@@ -22,7 +22,6 @@ Currently supported message brokers:
 
 ### SEE ALSO
 
-* [replay completion](replay_completion.md)	 - Generate the autocompletion script for the specified shell
 * [replay dlr](replay_dlr.md)	 - Review and process dead-lettered messages
 * [replay generateDocs](replay_generateDocs.md)	 - Generate and write CLI tool docs
 * [replay move](replay_move.md)	 - Moves messages from a source to a destination
