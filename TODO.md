@@ -11,7 +11,6 @@
       * YAML
   * DLR command
     * Test with additional payload types
-      * Plain text
       * Avro
       * Protobuf
       * YAML
