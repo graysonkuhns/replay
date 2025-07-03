@@ -2,12 +2,6 @@
 
 This repository includes a GitHub Actions workflow that automatically runs integration tests for pull requests from trusted authors.
 
-## Trusted Authors
-
-Integration tests will only run for pull requests created by:
-- `graysonkuhns` (repository owner)
-- `dependabot[bot]` (dependency updates)
-
 ## Required Secrets
 
 To enable the integration tests, the following GitHub repository secrets must be configured:
