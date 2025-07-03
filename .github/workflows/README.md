@@ -23,8 +23,7 @@ The Google Cloud Platform project ID where the integration test resources will b
 ## Workflow Behavior
 
 - **Trigger**: Runs on pull request events (opened, synchronize, reopened)
-- **Author Check**: First job checks if the PR author is trusted
-- **Integration Tests**: Second job runs only if the author is trusted
+- **Integration Tests**: Run the integration tests
 - **Timeout**: Tests have a 25-minute timeout (5 minutes more than the script's 20-minute timeout)
 - **Artifacts**: Test logs are uploaded as artifacts for debugging
 
