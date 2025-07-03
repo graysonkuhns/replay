@@ -99,9 +99,12 @@ Each message is polled, published, and acknowledged sequentially.`,
 			}
 			resp, err := subscriberClient.Pull(pollCtx, req)
 			pollCancel()
+			
 			if err != nil {
 				// Exit loop if no messages are available within timeout.
-				if strings.Contains(err.Error(), "DeadlineExceeded") {
+				if strings.Contains(err.Error(), "DeadlineExceeded") || 
+				   strings.Contains(err.Error(), "context deadline exceeded") ||
+				   strings.Contains(err.Error(), "timeout") {
 					log.Printf("No messages received within timeout")
 					break
 				}
