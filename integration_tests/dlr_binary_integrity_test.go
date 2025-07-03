@@ -79,7 +79,7 @@ func TestDLRBinaryMessageIntegrity(t *testing.T) {
 			sampleSize = len(binaryData)
 		}
 		sampleBase64 := base64.StdEncoding.EncodeToString(binaryData[:sampleSize])
-		
+
 		messages = append(messages, pubsub.Message{
 			Data: binaryData,
 			Attributes: map[string]string{
@@ -153,7 +153,7 @@ func TestDLRBinaryMessageIntegrity(t *testing.T) {
 	for i, expectedData := range expectedBinaryData {
 		found := false
 		expectedSize := len(expectedData)
-		
+
 		for _, msg := range received {
 			// Use size as first filter since binary comparison can be expensive
 			if msg.Attributes["sizeBytes"] == fmt.Sprintf("%d", expectedSize) {
@@ -178,8 +178,8 @@ func TestDLRBinaryMessageIntegrity(t *testing.T) {
 				}
 				expectedSample = base64.StdEncoding.EncodeToString(expectedData[:sampleSize])
 			}
-			
-			t.Fatalf("Binary message %d (size: %d bytes, sample: %s) not found or corrupted", 
+
+			t.Fatalf("Binary message %d (size: %d bytes, sample: %s) not found or corrupted",
 				i+1, expectedSize, expectedSample)
 		}
 	}

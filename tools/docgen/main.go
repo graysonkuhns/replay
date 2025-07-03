@@ -12,7 +12,7 @@ import (
 func main() {
 	// Default output directory
 	outputDir := "./docs/"
-	
+
 	// If an argument is provided, use it as the output directory
 	if len(os.Args) > 1 {
 		outputDir = os.Args[1]

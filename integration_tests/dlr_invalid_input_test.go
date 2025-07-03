@@ -53,7 +53,7 @@ func TestDLRInvalidInputHandling(t *testing.T) {
 	sourceTopic := client.Topic(sourceTopicName)
 	var messages []pubsub.Message
 	orderingKey := "test-ordering-key"
-	
+
 	for i := 1; i <= numMessages; i++ {
 		body := fmt.Sprintf("DLR Invalid Input Test message %d", i)
 		messages = append(messages, pubsub.Message{
@@ -68,9 +68,9 @@ func TestDLRInvalidInputHandling(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to publish test messages with ordering key: %v", err)
 	}
-	
+
 	log.Printf("Published %d messages with ordering key: %s", numMessages, orderingKey)
-	time.Sleep(15 * time.Second)  // Wait for messages to arrive in the subscription
+	time.Sleep(15 * time.Second) // Wait for messages to arrive in the subscription
 
 	// Prepare CLI arguments for the dlr command.
 	dlrArgs := []string{
@@ -89,10 +89,10 @@ func TestDLRInvalidInputHandling(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create pipe for stdin: %v", err)
 	}
-	
+
 	// Write inputs with intentional invalid entries
 	inputs := "x\nm\ninvalid\n123\nd\n"
-	
+
 	_, err = io.WriteString(w, inputs)
 	if err != nil {
 		t.Fatalf("Failed to write simulated input: %v", err)
@@ -106,7 +106,7 @@ func TestDLRInvalidInputHandling(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error running CLI command: %v", err)
 	}
-	
+
 	// Define expected output substrings.
 	expectedLines := []string{
 		fmt.Sprintf("Starting DLR review from projects/%s/subscriptions/%s", projectID, sourceSubName),
@@ -128,7 +128,7 @@ func TestDLRInvalidInputHandling(t *testing.T) {
 		"",
 		"Dead-lettered messages review completed. Total messages processed: 2",
 	}
-	
+
 	testhelpers.AssertCLIOutput(t, actual, expectedLines)
 	t.Logf("DLR command executed for invalid input handling test")
 
@@ -144,23 +144,23 @@ func TestDLRInvalidInputHandling(t *testing.T) {
 	if len(received) != 1 {
 		t.Fatalf("Expected 1 message in destination, got %d", len(received))
 	}
-	
+
 	// Verify the correct body of the moved message
 	expectedMovedMessage := "DLR Invalid Input Test message 1"
 	if string(received[0].Data) != expectedMovedMessage {
-		t.Fatalf("Expected moved message body '%s', but got '%s'", 
+		t.Fatalf("Expected moved message body '%s', but got '%s'",
 			expectedMovedMessage, string(received[0].Data))
 	}
-	
+
 	// Verify that no messages remain in the source subscription by using a custom checking approach
 	// instead of using PollMessages which expects a specific number of messages
 	time.Sleep(5 * time.Second)
-	
+
 	// Create a custom receiver function to check for any messages
 	var foundMessage bool
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	
+
 	// Use Receive directly instead of PollMessages
 	err = sourceSub.Receive(cctx, func(ctx context.Context, m *pubsub.Message) {
 		if m.Attributes["testRun"] == testRunValue {
@@ -171,17 +171,17 @@ func TestDLRInvalidInputHandling(t *testing.T) {
 			m.Ack() // Acknowledge non-test messages
 		}
 	})
-	
+
 	// Either we get context canceled (because we found a message or timeout)
 	// or we get a context deadline exceeded (expected when no messages)
 	if err != nil && err != context.Canceled && !isContextDeadlineExceeded(err) {
 		t.Fatalf("Unexpected error checking source subscription: %v", err)
 	}
-	
+
 	if foundMessage {
 		t.Fatalf("Expected no messages in source subscription, but found one")
 	}
-	
+
 	t.Logf("Successfully verified DLR invalid input handling: 1 message moved after invalid input, 1 message discarded after multiple invalid inputs")
 }
 

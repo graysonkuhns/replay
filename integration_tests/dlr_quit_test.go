@@ -53,7 +53,7 @@ func TestDLRQuitOperation(t *testing.T) {
 	sourceTopic := client.Topic(sourceTopicName)
 	var messages []pubsub.Message
 	orderingKey := "test-ordering-key"
-	
+
 	for i := 1; i <= numMessages; i++ {
 		body := fmt.Sprintf("DLR Quit Test message %d", i)
 		messages = append(messages, pubsub.Message{
@@ -68,9 +68,9 @@ func TestDLRQuitOperation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to publish test messages with ordering key: %v", err)
 	}
-	
+
 	log.Printf("Published %d messages with ordering key: %s", numMessages, orderingKey)
-	time.Sleep(15 * time.Second)  // Wait for messages to arrive in the subscription
+	time.Sleep(15 * time.Second) // Wait for messages to arrive in the subscription
 
 	// Prepare CLI arguments for the dlr command.
 	dlrArgs := []string{
@@ -87,10 +87,10 @@ func TestDLRQuitOperation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create pipe for stdin: %v", err)
 	}
-	
+
 	// Write inputs: move, move, discard, quit
 	inputs := "m\nm\nd\nq\n"
-	
+
 	_, err = io.WriteString(w, inputs)
 	if err != nil {
 		t.Fatalf("Failed to write simulated input: %v", err)
@@ -104,7 +104,7 @@ func TestDLRQuitOperation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error running CLI command: %v", err)
 	}
-	
+
 	// Define expected output substrings.
 	expectedLines := []string{
 		fmt.Sprintf("Starting DLR review from projects/%s/subscriptions/%s", projectID, sourceSubName),
@@ -135,7 +135,7 @@ func TestDLRQuitOperation(t *testing.T) {
 		"",
 		"Dead-lettered messages review completed. Total messages processed: 3",
 	}
-	
+
 	testhelpers.AssertCLIOutput(t, actual, expectedLines)
 	t.Logf("DLR command executed for quit operation test")
 
@@ -151,13 +151,13 @@ func TestDLRQuitOperation(t *testing.T) {
 	if len(received) != 2 {
 		t.Fatalf("Expected 2 messages in destination, got %d", len(received))
 	}
-	
+
 	// Verify correct bodies of moved messages
 	expectedMovedMessages := []string{
 		"DLR Quit Test message 1",
 		"DLR Quit Test message 2",
 	}
-	
+
 	for _, expected := range expectedMovedMessages {
 		found := false
 		for _, msg := range received {
@@ -170,30 +170,30 @@ func TestDLRQuitOperation(t *testing.T) {
 			t.Fatalf("Expected moved message body '%s' not found in received messages", expected)
 		}
 	}
-	
+
 	// Wait for ack deadline to expire (10 seconds) before checking the source subscription
 	time.Sleep(25 * time.Second)
-	
+
 	// Verify that one message remains in the source subscription (message 4)
 	// We expect exactly 1 message to remain in the source subscription after processing.
 	// Use a longer timeout context for this specific polling operation
 	pollCtx, pollCancel := context.WithTimeout(ctx, 30*time.Second)
 	defer pollCancel()
 	sourceReceived, err := testhelpers.PollMessages(pollCtx, sourceSub, testRunValue, 1)
-	
+
 	if err != nil {
 		t.Fatalf("Error polling source subscription: %v", err)
 	}
 	if len(sourceReceived) != 1 {
 		t.Fatalf("Expected 1 message in source subscription, got %d", len(sourceReceived))
 	}
-	
+
 	// Verify the remaining message is the correct one (message 4 that we quit before processing)
 	expectedRemainingMessage := "DLR Quit Test message 4"
 	if string(sourceReceived[0].Data) != expectedRemainingMessage {
-		t.Fatalf("Expected remaining message '%s', but got '%s'", 
+		t.Fatalf("Expected remaining message '%s', but got '%s'",
 			expectedRemainingMessage, string(sourceReceived[0].Data))
 	}
-	
+
 	t.Logf("Successfully verified DLR quit operation: 2 messages moved, 1 discarded, 1 remaining after quit")
 }

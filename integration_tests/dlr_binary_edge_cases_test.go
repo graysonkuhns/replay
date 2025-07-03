@@ -88,7 +88,7 @@ func TestDLRBinaryEdgeCases(t *testing.T) {
 	for i, binaryData := range expectedBinaryData {
 		// For logging, encode the data to base64
 		base64Data := base64.StdEncoding.EncodeToString(binaryData)
-		
+
 		messages = append(messages, pubsub.Message{
 			Data: binaryData,
 			Attributes: map[string]string{
@@ -163,11 +163,11 @@ func TestDLRBinaryEdgeCases(t *testing.T) {
 	for i, expectedData := range expectedBinaryData {
 		found := false
 		desc := descriptions[i]
-		
+
 		for _, msg := range received {
 			if msg.Attributes["description"] == desc && bytes.Equal(msg.Data, expectedData) {
 				found = true
-				t.Logf("Binary edge case '%s' verified (size: %d bytes)", 
+				t.Logf("Binary edge case '%s' verified (size: %d bytes)",
 					desc, len(expectedData))
 				break
 			}
@@ -176,7 +176,7 @@ func TestDLRBinaryEdgeCases(t *testing.T) {
 		if !found {
 			// Convert to base64 for error messaging since these are odd byte sequences
 			base64Data := base64.StdEncoding.EncodeToString(expectedData)
-			t.Fatalf("Binary edge case '%s' failed integrity check (base64: %s)", 
+			t.Fatalf("Binary edge case '%s' failed integrity check (base64: %s)",
 				desc, base64Data)
 		}
 	}

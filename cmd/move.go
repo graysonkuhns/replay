@@ -110,7 +110,7 @@ Each message is polled, published, and acknowledged sequentially.`,
 			}
 
 			if len(resp.ReceivedMessages) == 0 {
-				log.Printf("No messages received")
+				log.Printf("No messages received within timeout")
 				break
 			}
 

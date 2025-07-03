@@ -55,7 +55,7 @@ func TestDLRWithPrettyJSON(t *testing.T) {
 			},
 		},
 	}
-	
+
 	jsonBytes, err := json.Marshal(jsonData)
 	if err != nil {
 		t.Fatalf("Failed to marshal JSON data: %v", err)
@@ -66,7 +66,7 @@ func TestDLRWithPrettyJSON(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to marshal pretty JSON: %v", err)
 	}
-	
+
 	// Publish the test message to the dead-letter topic
 	sourceTopic := client.Topic(sourceTopicName)
 	message := pubsub.Message{
@@ -75,7 +75,7 @@ func TestDLRWithPrettyJSON(t *testing.T) {
 			"testRun": testRunValue,
 		},
 	}
-	
+
 	_, err = testhelpers.PublishTestMessages(ctx, sourceTopic, []pubsub.Message{message}, "test-ordering-key")
 	if err != nil {
 		t.Fatalf("Failed to publish test message: %v", err)
@@ -129,6 +129,6 @@ func TestDLRWithPrettyJSON(t *testing.T) {
 	}
 
 	testhelpers.AssertCLIOutput(t, actual, expectedLines)
-	
+
 	log.Printf("Successfully verified pretty JSON output formatting")
 }
