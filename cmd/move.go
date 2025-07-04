@@ -35,8 +35,6 @@ Each message is polled, published, and acknowledged sequentially.`,
 		count, _ := cmd.Flags().GetInt("count")
 		pollTimeoutSec, _ := cmd.Flags().GetInt("polling-timeout-seconds")
 
-		log.Printf("DEBUG: Flags - count=%d, pollTimeoutSec=%d", count, pollTimeoutSec)
-
 		// Validate supported types
 		if sourceType != "GCP_PUBSUB_SUBSCRIPTION" {
 			log.Printf("Error: unsupported source type: %s. Supported: GCP_PUBSUB_SUBSCRIPTION", sourceType)
@@ -93,9 +91,7 @@ Each message is polled, published, and acknowledged sequentially.`,
 		processed := 0
 
 		// Loop to pull a single message with 5-second timeout per poll.
-		log.Printf("DEBUG: Starting message processing loop")
 		for {
-			log.Printf("DEBUG: Loop iteration - processed=%d, count=%d", processed, count)
 			pollCtx, pollCancel := context.WithTimeout(ctx, time.Duration(pollTimeoutSec)*time.Second)
 			req := &pubsubpb.PullRequest{
 				Subscription: source,
@@ -106,10 +102,10 @@ Each message is polled, published, and acknowledged sequentially.`,
 			
 			if err != nil {
 				// Exit loop if no messages are available within timeout.
-				log.Printf("DEBUG: Pull returned error: %v", err)
 				errMsg := err.Error()
 				if strings.Contains(errMsg, "DeadlineExceeded") || 
 				   strings.Contains(errMsg, "context deadline exceeded") ||
+				   strings.Contains(errMsg, "timeout") ||
 				   strings.Contains(errMsg, "Deadline") {
 					log.Printf("No messages received within timeout")
 					break
@@ -118,7 +114,6 @@ Each message is polled, published, and acknowledged sequentially.`,
 				continue
 			}
 
-			log.Printf("DEBUG: Pull successful, received %d messages", len(resp.ReceivedMessages))
 			if len(resp.ReceivedMessages) == 0 {
 				log.Printf("No messages received within timeout")
 				break
@@ -157,15 +152,10 @@ Each message is polled, published, and acknowledged sequentially.`,
 			log.Printf("Processed message %d", msgNum)
 
 			if count > 0 && processed >= count {
-				log.Printf("DEBUG: Exiting loop due to count limit: processed=%d, count=%d", processed, count)
 				break
 			}
-			
-			log.Printf("DEBUG: Count condition not met: count=%d, processed=%d, count>0=%v, processed>=count=%v", 
-				count, processed, count > 0, processed >= count)
 		}
 
-		log.Printf("DEBUG: Loop exited, processed=%d, count=%d", processed, count)
 		log.Printf("Move operation completed. Total messages moved: %d", processed)
 	},
 }
