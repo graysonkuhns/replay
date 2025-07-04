@@ -35,9 +35,6 @@ Each message is polled, published, and acknowledged sequentially.`,
 		count, _ := cmd.Flags().GetInt("count")
 		pollTimeoutSec, _ := cmd.Flags().GetInt("polling-timeout-seconds")
 
-		// Debug: Log the count value to understand the issue
-		log.Printf("DEBUG: count=%d", count)
-
 		// Validate supported types
 		if sourceType != "GCP_PUBSUB_SUBSCRIPTION" {
 			log.Printf("Error: unsupported source type: %s. Supported: GCP_PUBSUB_SUBSCRIPTION", sourceType)
@@ -106,11 +103,12 @@ Each message is polled, published, and acknowledged sequentially.`,
 			if err != nil {
 				// Exit loop if no messages are available within timeout.
 				errMsg := err.Error()
-				log.Printf("DEBUG: Pull error: %v", err)
+				// Enhanced timeout detection to catch various error formats
 				if strings.Contains(errMsg, "DeadlineExceeded") || 
 				   strings.Contains(errMsg, "context deadline exceeded") ||
 				   strings.Contains(errMsg, "timeout") ||
-				   strings.Contains(errMsg, "Deadline") {
+				   strings.Contains(errMsg, "Deadline") ||
+				   strings.Contains(errMsg, "context canceled") {
 					log.Printf("No messages received within timeout")
 					break
 				}
@@ -118,7 +116,6 @@ Each message is polled, published, and acknowledged sequentially.`,
 				continue
 			}
 
-			log.Printf("DEBUG: Pull success, received %d messages", len(resp.ReceivedMessages))
 			if len(resp.ReceivedMessages) == 0 {
 				log.Printf("No messages received within timeout")
 				break
@@ -156,16 +153,11 @@ Each message is polled, published, and acknowledged sequentially.`,
 			log.Printf("Acked message %d", msgNum)
 			log.Printf("Processed message %d", msgNum)
 
-			// Debug: Log the count check
-			log.Printf("DEBUG: count check - count=%d, processed=%d", count, processed)
 			if count > 0 && processed >= count {
-				log.Printf("DEBUG: Exiting due to count limit")
 				break
 			}
-			log.Printf("DEBUG: Continuing to next iteration")
 		}
 
-		log.Printf("DEBUG: Exited loop")
 		log.Printf("Move operation completed. Total messages moved: %d", processed)
 	},
 }
