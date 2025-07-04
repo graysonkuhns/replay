@@ -102,9 +102,7 @@ Each message is polled, published, and acknowledged sequentially.`,
 			
 			if err != nil {
 				// Exit loop if no messages are available within timeout.
-				if strings.Contains(err.Error(), "DeadlineExceeded") || 
-				   strings.Contains(err.Error(), "context deadline exceeded") ||
-				   strings.Contains(err.Error(), "timeout") {
+				if strings.Contains(err.Error(), "DeadlineExceeded") {
 					log.Printf("No messages received within timeout")
 					break
 				}
