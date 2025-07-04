@@ -102,6 +102,7 @@ Each message is polled, published, and acknowledged sequentially.`,
 			
 			if err != nil {
 				// Exit loop if no messages are available within timeout.
+				log.Printf("Pull error: %v", err)
 				errMsg := err.Error()
 				// Enhanced timeout detection to catch various error formats
 				if strings.Contains(errMsg, "DeadlineExceeded") || 
