@@ -106,6 +106,7 @@ Each message is polled, published, and acknowledged sequentially.`,
 			if err != nil {
 				// Exit loop if no messages are available within timeout.
 				errMsg := err.Error()
+				log.Printf("DEBUG: Pull error: %v", err)
 				if strings.Contains(errMsg, "DeadlineExceeded") || 
 				   strings.Contains(errMsg, "context deadline exceeded") ||
 				   strings.Contains(errMsg, "timeout") ||
@@ -117,6 +118,7 @@ Each message is polled, published, and acknowledged sequentially.`,
 				continue
 			}
 
+			log.Printf("DEBUG: Pull success, received %d messages", len(resp.ReceivedMessages))
 			if len(resp.ReceivedMessages) == 0 {
 				log.Printf("No messages received within timeout")
 				break
