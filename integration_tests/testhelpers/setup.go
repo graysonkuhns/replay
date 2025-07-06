@@ -34,11 +34,11 @@ func generateUniqueResourceName(baseName string, testName string) string {
 	cleanTestName := strings.ReplaceAll(testName, "/", "_")
 	cleanTestName = strings.ReplaceAll(cleanTestName, " ", "_")
 	cleanTestName = strings.ToLower(cleanTestName)
-	
+
 	// Add timestamp and random suffix for uniqueness
 	timestamp := time.Now().Unix()
 	randSuffix := rand.Intn(1000)
-	
+
 	return fmt.Sprintf("%s_%s_%d_%d", baseName, cleanTestName, timestamp, randSuffix)
 }
 
@@ -111,33 +111,33 @@ func SetupIntegrationTest(t *testing.T) *TestSetup {
 	// Setup cleanup to delete resources after test
 	t.Cleanup(func() {
 		log.Printf("Cleaning up resources for test: %s", testName)
-		
+
 		// Delete subscriptions first
 		if err := sourceSub.Delete(ctx); err != nil {
 			log.Printf("Failed to delete source subscription %s: %v", sourceSubName, err)
 		} else {
 			log.Printf("Deleted source subscription: %s", sourceSubName)
 		}
-		
+
 		if err := destSub.Delete(ctx); err != nil {
 			log.Printf("Failed to delete destination subscription %s: %v", destSubName, err)
 		} else {
 			log.Printf("Deleted destination subscription: %s", destSubName)
 		}
-		
+
 		// Delete topics
 		if err := sourceTopic.Delete(ctx); err != nil {
 			log.Printf("Failed to delete source topic %s: %v", sourceTopicName, err)
 		} else {
 			log.Printf("Deleted source topic: %s", sourceTopicName)
 		}
-		
+
 		if err := destTopic.Delete(ctx); err != nil {
 			log.Printf("Failed to delete destination topic %s: %v", destTopicName, err)
 		} else {
 			log.Printf("Deleted destination topic: %s", destTopicName)
 		}
-		
+
 		client.Close()
 	})
 
