@@ -16,6 +16,7 @@ func init() {
 }
 
 func TestMoveStopsWhenSourceExhausted(t *testing.T) {
+	t.Parallel()
 	log.Printf("Starting TestMoveStopsWhenSourceExhausted: verifying stop when source runs out of messages")
 	setup := testhelpers.SetupIntegrationTest(t)
 	// For this test, we move messages from the dead letter infrastructure to the normal events infrastructure.
@@ -102,6 +103,7 @@ func TestMoveStopsWhenSourceExhausted(t *testing.T) {
 }
 
 func TestMoveOperationWithCount(t *testing.T) {
+	t.Parallel()
 	log.Printf("Starting TestMoveOperationWithCount")
 	setup := testhelpers.SetupIntegrationTest(t)
 
@@ -191,6 +193,7 @@ func TestMoveOperationWithCount(t *testing.T) {
 }
 
 func TestMoveMessageBodyIntegrity(t *testing.T) {
+	t.Parallel()
 	// New test to verify that the body content of moved messages remains unchanged.
 	setup := testhelpers.SetupIntegrationTest(t)
 	// Use same names as other tests.
