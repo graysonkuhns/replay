@@ -149,24 +149,36 @@ func TestDLRQuitOperation(t *testing.T) {
 	time.Sleep(25 * time.Second)
 
 	// Verify that one message remains in the source subscription (message 4)
-	// We expect exactly 1 message to remain in the source subscription after processing.
-	// Use a longer timeout context for this specific polling operation
+	// Use a custom receiver approach to avoid acknowledging the message we're trying to verify
+	var foundMessage bool
+	var receivedMessage *pubsub.Message
 	pollCtx, pollCancel := context.WithTimeout(setup.Context, 30*time.Second)
 	defer pollCancel()
-	sourceReceived, err := testhelpers.PollMessages(pollCtx, setup.SourceSub, testRunValue, 1)
 
-	if err != nil {
+	// Use Receive directly instead of PollMessages to avoid acknowledging the test message
+	err = setup.SourceSub.Receive(pollCtx, func(ctx context.Context, m *pubsub.Message) {
+		if m.Attributes["testRun"] == testRunValue {
+			foundMessage = true
+			receivedMessage = m
+			// Do NOT acknowledge the test message - we want to verify it remains in the subscription
+			pollCancel() // Stop receiving as soon as we find a matching message
+		} else {
+			m.Ack() // Acknowledge non-test messages
+		}
+	})
+
+	if err != nil && err != context.Canceled {
 		t.Fatalf("Error polling source subscription: %v", err)
 	}
-	if len(sourceReceived) != 1 {
-		t.Fatalf("Expected 1 message in source subscription, got %d", len(sourceReceived))
+	if !foundMessage {
+		t.Fatalf("Expected 1 message in source subscription, got 0")
 	}
 
 	// Verify the remaining message is the correct one (message 4 that we quit before processing)
 	expectedRemainingMessage := "DLR Quit Test message 4"
-	if string(sourceReceived[0].Data) != expectedRemainingMessage {
+	if string(receivedMessage.Data) != expectedRemainingMessage {
 		t.Fatalf("Expected remaining message '%s', but got '%s'",
-			expectedRemainingMessage, string(sourceReceived[0].Data))
+			expectedRemainingMessage, string(receivedMessage.Data))
 	}
 
 	t.Logf("Successfully verified DLR quit operation: 2 messages moved, 1 discarded, 1 remaining after quit")
