@@ -74,7 +74,7 @@ func TestMoveBinaryMessageIntegrity(t *testing.T) {
 	zeroPadded := make([]byte, 256)
 	for i := 0; i < len(zeroPadded); i++ {
 		// Create a pattern with some null bytes
-		if i % 4 == 0 {
+		if i%4 == 0 {
 			zeroPadded[i] = 0x00 // null byte every 4 bytes
 		} else {
 			zeroPadded[i] = byte(i % 256)
@@ -119,7 +119,7 @@ func TestMoveBinaryMessageIntegrity(t *testing.T) {
 		"--destination", fmt.Sprintf("projects/%s/topics/%s", projectID, destTopicName),
 		"--count", fmt.Sprintf("%d", numMessages),
 	}
-	
+
 	actual, err := testhelpers.RunCLICommand(moveArgs)
 	if err != nil {
 		t.Fatalf("Error running CLI command: %v", err)

@@ -52,19 +52,19 @@ func PurgeSubscription(ctx context.Context, sub *pubsub.Subscription) error {
 
 func PublishTestMessages(ctx context.Context, topic *pubsub.Topic, messages []pubsub.Message, orderingKey string) ([]string, error) {
 	var publishIDs []string
-	
+
 	// If ordering key is provided, enable message ordering on the topic
 	if orderingKey != "" {
 		topic.EnableMessageOrdering = true
 	}
-	
+
 	for i, msg := range messages {
 		msgToPublish := &msg // Use the original message by default
-		
+
 		// If ordering key is provided, create a copy with the ordering key
 		if orderingKey != "" {
 			log.Printf("Publishing message %d with ordering key: %s", i+1, orderingKey)
-			
+
 			// Create a new message with the ordering key
 			msgToPublish = &pubsub.Message{
 				Data:        msg.Data,
@@ -74,7 +74,7 @@ func PublishTestMessages(ctx context.Context, topic *pubsub.Topic, messages []pu
 		} else {
 			log.Printf("Publishing message %d", i+1)
 		}
-		
+
 		result := topic.Publish(ctx, msgToPublish)
 		id, err := result.Get(ctx)
 		if err != nil {

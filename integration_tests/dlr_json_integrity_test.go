@@ -54,11 +54,14 @@ func TestDLRJSONMessageIntegrity(t *testing.T) {
 	var messages []pubsub.Message
 	var expectedJSONs []string
 
+	// Use a fixed timestamp for deterministic testing
+	fixedTimestamp := int64(1751547082)
+
 	// Simple JSON
 	simpleJSON := map[string]interface{}{
 		"id":        1,
 		"name":      "Simple JSON Message",
-		"timestamp": time.Now().Unix(),
+		"timestamp": fixedTimestamp,
 		"isValid":   true,
 	}
 	simpleJSONBytes, err := json.Marshal(simpleJSON)
@@ -71,7 +74,7 @@ func TestDLRJSONMessageIntegrity(t *testing.T) {
 	nestedJSON := map[string]interface{}{
 		"id":        2,
 		"name":      "Nested JSON Message",
-		"timestamp": time.Now().Unix(),
+		"timestamp": fixedTimestamp,
 		"metadata": map[string]interface{}{
 			"version": "1.0",
 			"source":  "integration-test",
@@ -89,7 +92,7 @@ func TestDLRJSONMessageIntegrity(t *testing.T) {
 	complexJSON := map[string]interface{}{
 		"id":        3,
 		"name":      "Complex JSON Message with special characters: !@#$%^&*()",
-		"timestamp": time.Now().Unix(),
+		"timestamp": fixedTimestamp,
 		"data": map[string]interface{}{
 			"items": []map[string]interface{}{
 				{
