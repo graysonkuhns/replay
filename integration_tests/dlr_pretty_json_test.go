@@ -19,9 +19,6 @@ func TestDLRWithPrettyJSON(t *testing.T) {
 	setup := testhelpers.SetupIntegrationTest(t)
 	testRunValue := "dlr_pretty_json_test"
 
-	// Purge the dead-letter (source) subscription.
-	setup.PurgeSourceSubscription(t)
-
 	// Create a JSON message for testing
 	jsonData := map[string]interface{}{
 		"id":        "test-123",

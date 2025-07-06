@@ -18,9 +18,6 @@ func TestDLRJSONMessageIntegrity(t *testing.T) {
 	setup := testhelpers.SetupIntegrationTest(t)
 	testRunValue := "dlr_json_integrity_test"
 
-	// Purge subscriptions.
-	setup.PurgeSubscriptions(t)
-
 	// Prepare JSON messages with various complexity levels
 	numMessages := 3
 	sourceTopic := setup.GetSourceTopic()

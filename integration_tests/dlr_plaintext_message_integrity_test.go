@@ -18,9 +18,6 @@ func TestDLRPlaintextMessageIntegrity(t *testing.T) {
 	setup := testhelpers.SetupIntegrationTest(t)
 	testRunValue := "dlr_plaintext_integrity_test"
 
-	// Purge subscriptions.
-	setup.PurgeSubscriptions(t)
-
 	// Prepare messages with unique plaintext body content.
 	numMessages := 3
 	sourceTopic := setup.GetSourceTopic()

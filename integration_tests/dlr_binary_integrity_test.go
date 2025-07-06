@@ -21,9 +21,6 @@ func TestDLRBinaryMessageIntegrity(t *testing.T) {
 	setup := testhelpers.SetupIntegrationTest(t)
 	testRunValue := "dlr_binary_integrity_test"
 
-	// Purge subscriptions.
-	setup.PurgeSubscriptions(t)
-
 	// Prepare various binary message payloads
 	numMessages := 2
 	sourceTopic := setup.GetSourceTopic()
