@@ -16,41 +16,15 @@ import (
 
 func TestDLRQuitOperation(t *testing.T) {
 	// Test to verify that the DLR operation correctly handles the quit command
-	ctx := context.Background()
-	projectID := os.Getenv("GCP_PROJECT")
-	if projectID == "" {
-		t.Fatal("GCP_PROJECT environment variable must be set")
-	}
-
-	// Define resource names.
-	sourceTopicName := "default-events-dead-letter"
-	sourceSubName := "default-events-dead-letter-subscription"
-	destTopicName := "default-events"
-	destSubName := "default-events-subscription"
+	setup := testhelpers.SetupIntegrationTest(t)
 	testRunValue := "dlr_quit_test"
 
-	client, err := pubsub.NewClient(ctx, projectID)
-	if err != nil {
-		t.Fatalf("Failed to create PubSub client: %v", err)
-	}
-	defer client.Close()
-
 	// Purge subscriptions.
-	sourceSub := client.Subscription(sourceSubName)
-	log.Printf("Purging source subscription: %s", sourceSubName)
-	if err := testhelpers.PurgeSubscription(ctx, sourceSub); err != nil {
-		t.Fatalf("Failed to purge source subscription: %v", err)
-	}
-	destSub := client.Subscription(destSubName)
-	destCtx, destCancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer destCancel()
-	if err := testhelpers.PurgeSubscription(destCtx, destSub); err != nil {
-		t.Fatalf("Failed to purge destination subscription: %v", err)
-	}
+	setup.PurgeSubscriptions(t)
 
 	// Prepare 4 messages with unique body content.
 	numMessages := 4
-	sourceTopic := client.Topic(sourceTopicName)
+	sourceTopic := setup.GetSourceTopic()
 	var messages []pubsub.Message
 	orderingKey := "test-ordering-key"
 
@@ -64,7 +38,7 @@ func TestDLRQuitOperation(t *testing.T) {
 		})
 	}
 
-	_, err = testhelpers.PublishTestMessages(ctx, sourceTopic, messages, orderingKey)
+	_, err := testhelpers.PublishTestMessages(setup.Context, sourceTopic, messages, orderingKey)
 	if err != nil {
 		t.Fatalf("Failed to publish test messages with ordering key: %v", err)
 	}
@@ -77,8 +51,8 @@ func TestDLRQuitOperation(t *testing.T) {
 		"dlr",
 		"--source-type", "GCP_PUBSUB_SUBSCRIPTION",
 		"--destination-type", "GCP_PUBSUB_TOPIC",
-		"--source", fmt.Sprintf("projects/%s/subscriptions/%s", projectID, sourceSubName),
-		"--destination", fmt.Sprintf("projects/%s/topics/%s", projectID, destTopicName),
+		"--source", fmt.Sprintf("projects/%s/subscriptions/%s", setup.ProjectID, setup.SourceSubName),
+		"--destination", fmt.Sprintf("projects/%s/topics/%s", setup.ProjectID, setup.DestTopicName),
 	}
 
 	// Simulate user inputs: "m" (move) for 2 messages, "d" (discard) for 1 message, then "q" (quit)
@@ -107,7 +81,7 @@ func TestDLRQuitOperation(t *testing.T) {
 
 	// Define expected output substrings.
 	expectedLines := []string{
-		fmt.Sprintf("Starting DLR review from projects/%s/subscriptions/%s", projectID, sourceSubName),
+		fmt.Sprintf("Starting DLR review from projects/%s/subscriptions/%s", setup.ProjectID, setup.SourceSubName),
 		"",
 		"Message 1:",
 		"Data:",
@@ -144,7 +118,7 @@ func TestDLRQuitOperation(t *testing.T) {
 
 	// Poll the destination subscription for moved messages.
 	// We expect exactly 2 messages to be moved.
-	received, err := testhelpers.PollMessages(ctx, destSub, testRunValue, 2)
+	received, err := testhelpers.PollMessages(setup.Context, setup.DestSub, testRunValue, 2)
 	if err != nil {
 		t.Fatalf("Error receiving messages from destination: %v", err)
 	}
@@ -177,9 +151,9 @@ func TestDLRQuitOperation(t *testing.T) {
 	// Verify that one message remains in the source subscription (message 4)
 	// We expect exactly 1 message to remain in the source subscription after processing.
 	// Use a longer timeout context for this specific polling operation
-	pollCtx, pollCancel := context.WithTimeout(ctx, 30*time.Second)
+	pollCtx, pollCancel := context.WithTimeout(setup.Context, 30*time.Second)
 	defer pollCancel()
-	sourceReceived, err := testhelpers.PollMessages(pollCtx, sourceSub, testRunValue, 1)
+	sourceReceived, err := testhelpers.PollMessages(pollCtx, setup.SourceSub, testRunValue, 1)
 
 	if err != nil {
 		t.Fatalf("Error polling source subscription: %v", err)

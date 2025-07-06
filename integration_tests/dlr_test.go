@@ -1,7 +1,6 @@
 package cmd_test
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"log"
@@ -15,35 +14,15 @@ import (
 )
 
 func TestDLROperation(t *testing.T) {
-	// Set up context and PubSub client.
-	ctx := context.Background()
-	projectID := os.Getenv("GCP_PROJECT")
-	if projectID == "" {
-		t.Fatal("GCP_PROJECT environment variable must be set")
-	}
-
-	// Define resource names.
-	sourceTopicName := "default-events-dead-letter"
-	sourceSubName := "default-events-dead-letter-subscription"
-	destTopicName := "default-events"
-	destSubName := "default-events-subscription"
+	// Set up integration test environment
+	setup := testhelpers.SetupIntegrationTest(t)
 	testRunValue := "dlr_test"
 
-	client, err := pubsub.NewClient(ctx, projectID)
-	if err != nil {
-		t.Fatalf("Failed to create PubSub client: %v", err)
-	}
-	defer client.Close()
-
 	// Purge the dead-letter (source) subscription.
-	sourceSub := client.Subscription(sourceSubName)
-	log.Printf("Purging source subscription: %s", sourceSubName)
-	if err := testhelpers.PurgeSubscription(ctx, sourceSub); err != nil {
-		t.Fatalf("Failed to purge source subscription: %v", err)
-	}
+	setup.PurgeSourceSubscription(t)
 
 	// Publish two test messages to the dead-letter topic: one to move and one to discard.
-	sourceTopic := client.Topic(sourceTopicName)
+	sourceTopic := setup.GetSourceTopic()
 	messages := []pubsub.Message{
 		{
 			Data: []byte("Test message move"),
@@ -58,7 +37,7 @@ func TestDLROperation(t *testing.T) {
 			},
 		},
 	}
-	_, err = testhelpers.PublishTestMessages(ctx, sourceTopic, messages, "test-ordering-key")
+	_, err := testhelpers.PublishTestMessages(setup.Context, sourceTopic, messages, "test-ordering-key")
 	if err != nil {
 		t.Fatalf("Failed to publish test messages: %v", err)
 	}
@@ -71,8 +50,8 @@ func TestDLROperation(t *testing.T) {
 		"dlr",
 		"--source-type", "GCP_PUBSUB_SUBSCRIPTION",
 		"--destination-type", "GCP_PUBSUB_TOPIC",
-		"--source", fmt.Sprintf("projects/%s/subscriptions/%s", projectID, sourceSubName),
-		"--destination", fmt.Sprintf("projects/%s/topics/%s", projectID, destTopicName),
+		"--source", fmt.Sprintf("projects/%s/subscriptions/%s", setup.ProjectID, setup.SourceSubName),
+		"--destination", fmt.Sprintf("projects/%s/topics/%s", setup.ProjectID, setup.DestTopicName),
 	}
 
 	// Simulate user inputs: "m" for moving message 1 and "d" for discarding message 2.
@@ -98,7 +77,7 @@ func TestDLROperation(t *testing.T) {
 
 	// Define expected output substrings.
 	expectedLines := []string{
-		fmt.Sprintf("Starting DLR review from projects/%s/subscriptions/%s", projectID, sourceSubName),
+		fmt.Sprintf("Starting DLR review from projects/%s/subscriptions/%s", setup.ProjectID, setup.SourceSubName),
 		"",
 		"Message 1:",
 		"Data:",
@@ -121,8 +100,7 @@ func TestDLROperation(t *testing.T) {
 	time.Sleep(5 * time.Second)
 
 	// Verify the message was published to the destination topic via its subscription.
-	destSub := client.Subscription(destSubName)
-	received, err := testhelpers.PollMessages(ctx, destSub, testRunValue, 1)
+	received, err := testhelpers.PollMessages(setup.Context, setup.DestSub, testRunValue, 1)
 	if err != nil {
 		t.Fatalf("Error receiving messages: %v", err)
 	}
@@ -132,7 +110,7 @@ func TestDLROperation(t *testing.T) {
 	log.Printf("Successfully moved and received %d message", len(received))
 
 	// Verify that the discarded message is no longer in the source subscription.
-	sourceReceived, err := testhelpers.PollMessages(ctx, sourceSub, testRunValue, 0)
+	sourceReceived, err := testhelpers.PollMessages(setup.Context, setup.SourceSub, testRunValue, 0)
 	if err != nil {
 		t.Fatalf("Error polling source subscription: %v", err)
 	}

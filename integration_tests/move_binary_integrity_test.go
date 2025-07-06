@@ -2,11 +2,9 @@ package cmd_test
 
 import (
 	"bytes"
-	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -17,40 +15,15 @@ import (
 
 func TestMoveBinaryMessageIntegrity(t *testing.T) {
 	// Test to verify that binary data remains unchanged when moving messages using the move operation.
-	ctx := context.Background()
-	projectID := os.Getenv("GCP_PROJECT")
-	if projectID == "" {
-		t.Fatal("GCP_PROJECT environment variable must be set")
-	}
-
-	// Define test parameters.
-	sourceTopicName := "default-events-dead-letter"
-	sourceSubName := "default-events-dead-letter-subscription"
-	destTopicName := "default-events"
-	destSubName := "default-events-subscription"
+	setup := testhelpers.SetupIntegrationTest(t)
 	testRunValue := "move_binary_integrity_test"
 
-	client, err := pubsub.NewClient(ctx, projectID)
-	if err != nil {
-		t.Fatalf("Failed to create PubSub client: %v", err)
-	}
-	defer client.Close()
-
 	// Purge subscriptions.
-	sourceSub := client.Subscription(sourceSubName)
-	if err := testhelpers.PurgeSubscription(ctx, sourceSub); err != nil {
-		t.Fatalf("Failed to purge source subscription: %v", err)
-	}
-	destSub := client.Subscription(destSubName)
-	destCtx, destCancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer destCancel()
-	if err := testhelpers.PurgeSubscription(destCtx, destSub); err != nil {
-		t.Fatalf("Failed to purge destination subscription: %v", err)
-	}
+	setup.PurgeSubscriptions(t)
 
 	// Prepare different types of binary data
 	numMessages := 3
-	sourceTopic := client.Topic(sourceTopicName)
+	sourceTopic := setup.GetSourceTopic()
 	var messages []pubsub.Message
 	var expectedBinaryData [][]byte
 
@@ -104,7 +77,7 @@ func TestMoveBinaryMessageIntegrity(t *testing.T) {
 		})
 	}
 
-	_, err = testhelpers.PublishTestMessages(ctx, sourceTopic, messages, "binary-move-test-key")
+	_, err := testhelpers.PublishTestMessages(setup.Context, sourceTopic, messages, "binary-move-test-key")
 	if err != nil {
 		t.Fatalf("Failed to publish binary test messages: %v", err)
 	}
@@ -115,8 +88,8 @@ func TestMoveBinaryMessageIntegrity(t *testing.T) {
 		"move",
 		"--source-type", "GCP_PUBSUB_SUBSCRIPTION",
 		"--destination-type", "GCP_PUBSUB_TOPIC",
-		"--source", fmt.Sprintf("projects/%s/subscriptions/%s", projectID, sourceSubName),
-		"--destination", fmt.Sprintf("projects/%s/topics/%s", projectID, destTopicName),
+		"--source", fmt.Sprintf("projects/%s/subscriptions/%s", setup.ProjectID, setup.SourceSubName),
+		"--destination", fmt.Sprintf("projects/%s/topics/%s", setup.ProjectID, setup.DestTopicName),
 		"--count", fmt.Sprintf("%d", numMessages),
 	}
 
@@ -130,7 +103,7 @@ func TestMoveBinaryMessageIntegrity(t *testing.T) {
 	time.Sleep(5 * time.Second)
 
 	// Poll the destination subscription for moved messages.
-	received, err := testhelpers.PollMessages(ctx, destSub, testRunValue, numMessages)
+	received, err := testhelpers.PollMessages(setup.Context, setup.DestSub, testRunValue, numMessages)
 	if err != nil {
 		t.Fatalf("Error receiving messages from destination: %v", err)
 	}
@@ -154,7 +127,7 @@ func TestMoveBinaryMessageIntegrity(t *testing.T) {
 	}
 
 	// Verify that the source subscription is empty
-	sourceReceived, err := testhelpers.PollMessages(ctx, sourceSub, testRunValue, 0)
+	sourceReceived, err := testhelpers.PollMessages(setup.Context, setup.SourceSub, testRunValue, 0)
 	if err != nil {
 		t.Fatalf("Error polling source subscription: %v", err)
 	}
