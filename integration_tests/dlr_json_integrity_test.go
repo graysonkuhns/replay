@@ -1,11 +1,9 @@
 package cmd_test
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"testing"
 	"time"
@@ -16,41 +14,15 @@ import (
 )
 
 func TestDLRJSONMessageIntegrity(t *testing.T) {
-	ctx := context.Background()
-	projectID := os.Getenv("GCP_PROJECT")
-	if projectID == "" {
-		t.Fatal("GCP_PROJECT environment variable must be set")
-	}
-
-	// Define resource names.
-	sourceTopicName := "default-events-dead-letter"
-	sourceSubName := "default-events-dead-letter-subscription"
-	destTopicName := "default-events"
-	destSubName := "default-events-subscription"
+	setup := testhelpers.SetupIntegrationTest(t)
 	testRunValue := "dlr_json_integrity_test"
 
-	client, err := pubsub.NewClient(ctx, projectID)
-	if err != nil {
-		t.Fatalf("Failed to create PubSub client: %v", err)
-	}
-	defer client.Close()
-
 	// Purge subscriptions.
-	sourceSub := client.Subscription(sourceSubName)
-	log.Printf("Purging source subscription: %s", sourceSubName)
-	if err := testhelpers.PurgeSubscription(ctx, sourceSub); err != nil {
-		t.Fatalf("Failed to purge source subscription: %v", err)
-	}
-	destSub := client.Subscription(destSubName)
-	destCtx, destCancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer destCancel()
-	if err := testhelpers.PurgeSubscription(destCtx, destSub); err != nil {
-		t.Fatalf("Failed to purge destination subscription: %v", err)
-	}
+	setup.PurgeSubscriptions(t)
 
 	// Prepare JSON messages with various complexity levels
 	numMessages := 3
-	sourceTopic := client.Topic(sourceTopicName)
+	sourceTopic := setup.GetSourceTopic()
 	var messages []pubsub.Message
 	var expectedJSONs []string
 
@@ -131,7 +103,7 @@ func TestDLRJSONMessageIntegrity(t *testing.T) {
 		})
 	}
 
-	_, err = testhelpers.PublishTestMessages(ctx, sourceTopic, messages, "json-test-ordering-key")
+	_, err = testhelpers.PublishTestMessages(setup.Context, sourceTopic, messages, "json-test-ordering-key")
 	if err != nil {
 		t.Fatalf("Failed to publish JSON test messages: %v", err)
 	}
@@ -142,8 +114,8 @@ func TestDLRJSONMessageIntegrity(t *testing.T) {
 		"dlr",
 		"--source-type", "GCP_PUBSUB_SUBSCRIPTION",
 		"--destination-type", "GCP_PUBSUB_TOPIC",
-		"--source", fmt.Sprintf("projects/%s/subscriptions/%s", projectID, sourceSubName),
-		"--destination", fmt.Sprintf("projects/%s/topics/%s", projectID, destTopicName),
+		"--source", fmt.Sprintf("projects/%s/subscriptions/%s", setup.ProjectID, setup.SourceSubName),
+		"--destination", fmt.Sprintf("projects/%s/topics/%s", setup.ProjectID, setup.DestTopicName),
 	}
 
 	// Simulate user inputs: "m" (move) for all messages
@@ -179,7 +151,7 @@ func TestDLRJSONMessageIntegrity(t *testing.T) {
 	time.Sleep(5 * time.Second)
 
 	// Poll the destination subscription for moved messages.
-	received, err := testhelpers.PollMessages(ctx, destSub, testRunValue, numMessages)
+	received, err := testhelpers.PollMessages(setup.Context, setup.DestSub, testRunValue, numMessages)
 	if err != nil {
 		t.Fatalf("Error receiving messages from destination: %v", err)
 	}
@@ -231,7 +203,7 @@ func TestDLRJSONMessageIntegrity(t *testing.T) {
 	}
 
 	// Verify that the source subscription is empty (all messages were moved)
-	sourceReceived, err := testhelpers.PollMessages(ctx, sourceSub, testRunValue, 0)
+	sourceReceived, err := testhelpers.PollMessages(setup.Context, setup.SourceSub, testRunValue, 0)
 	if err != nil {
 		t.Fatalf("Error polling source subscription: %v", err)
 	}

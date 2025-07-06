@@ -1,10 +1,8 @@
 package cmd_test
 
 import (
-	"context"
 	"fmt"
 	"log"
-	"os"
 	"testing"
 	"time"
 
@@ -19,39 +17,13 @@ func init() {
 
 func TestMoveStopsWhenSourceExhausted(t *testing.T) {
 	log.Printf("Starting TestMoveStopsWhenSourceExhausted: verifying stop when source runs out of messages")
-	ctx := context.Background()
-	projectID := os.Getenv("GCP_PROJECT")
-	if projectID == "" {
-		t.Fatal("GCP_PROJECT environment variable must be set")
-	}
+	setup := testhelpers.SetupIntegrationTest(t)
 	// For this test, we move messages from the dead letter infrastructure to the normal events infrastructure.
-	sourceTopicName := "default-events-dead-letter"
-	sourceSubName := "default-events-dead-letter-subscription"
-	destTopicName := "default-events"
 
-	client, err := pubsub.NewClient(ctx, projectID)
-	if err != nil {
-		t.Fatalf("Failed to create PubSub client: %v", err)
-	}
-	defer client.Close()
+	setup.PurgeSubscriptions(t)
+	log.Printf("Completed purge of subscriptions")
 
-	sourceSub := client.Subscription(sourceSubName)
-	log.Printf("Purging source subscription: %s", sourceSubName)
-	if err := testhelpers.PurgeSubscription(ctx, sourceSub); err != nil {
-		t.Fatalf("Failed to purge source subscription: %v", err)
-	}
-	log.Printf("Completed purge of source subscription: %s", sourceSubName)
-
-	log.Printf("Purging destination subscription: default-events-subscription")
-	destSubPurge := client.Subscription("default-events-subscription")
-	destCtx, destCancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer destCancel()
-	if err := testhelpers.PurgeSubscription(destCtx, destSubPurge); err != nil {
-		t.Fatalf("Failed to purge destination subscription: %v", err)
-	}
-	log.Printf("Completed purge of destination subscription: default-events-subscription")
-
-	sourceTopic := client.Topic(sourceTopicName)
+	sourceTopic := setup.GetSourceTopic()
 	numMessages := 3
 	testRunValue := "move_test"
 
@@ -65,7 +37,7 @@ func TestMoveStopsWhenSourceExhausted(t *testing.T) {
 		})
 	}
 
-	_, err = testhelpers.PublishTestMessages(ctx, sourceTopic, messages, "test-ordering-key")
+	_, err := testhelpers.PublishTestMessages(setup.Context, sourceTopic, messages, "test-ordering-key")
 	if err != nil {
 		t.Fatalf("Failed to publish test messages: %v", err)
 	}
@@ -77,8 +49,8 @@ func TestMoveStopsWhenSourceExhausted(t *testing.T) {
 		"move",
 		"--source-type", "GCP_PUBSUB_SUBSCRIPTION",
 		"--destination-type", "GCP_PUBSUB_TOPIC",
-		"--source", fmt.Sprintf("projects/%s/subscriptions/%s", projectID, sourceSubName),
-		"--destination", fmt.Sprintf("projects/%s/topics/%s", projectID, destTopicName),
+		"--source", fmt.Sprintf("projects/%s/subscriptions/%s", setup.ProjectID, setup.SourceSubName),
+		"--destination", fmt.Sprintf("projects/%s/topics/%s", setup.ProjectID, setup.DestTopicName),
 	}
 
 	actual, err := testhelpers.RunCLICommand(moveArgs)
@@ -89,7 +61,7 @@ func TestMoveStopsWhenSourceExhausted(t *testing.T) {
 
 	// Define expected output lines.
 	expectedLines := []string{
-		fmt.Sprintf("[TIMESTAMP] Moving messages from projects/%s/subscriptions/%s to projects/%s/topics/%s", projectID, sourceSubName, projectID, destTopicName),
+		fmt.Sprintf("[TIMESTAMP] Moving messages from projects/%s/subscriptions/%s to projects/%s/topics/%s", setup.ProjectID, setup.SourceSubName, setup.ProjectID, setup.DestTopicName),
 		"[TIMESTAMP] Pulled message 1",
 		"[TIMESTAMP] Publishing message 1",
 		"[TIMESTAMP] Published message 1 successfully",
@@ -115,8 +87,7 @@ func TestMoveStopsWhenSourceExhausted(t *testing.T) {
 	log.Printf("Waiting for messages to propagate to destination subscription")
 
 	log.Printf("Starting to receive messages from destination subscription: default-events-subscription")
-	destSub := client.Subscription("default-events-subscription")
-	received, err := testhelpers.PollMessages(ctx, destSub, testRunValue, numMessages)
+	received, err := testhelpers.PollMessages(setup.Context, setup.DestSub, testRunValue, numMessages)
 	if err != nil {
 		t.Fatalf("Error receiving messages: %v", err)
 	}
@@ -132,40 +103,15 @@ func TestMoveStopsWhenSourceExhausted(t *testing.T) {
 
 func TestMoveOperationWithCount(t *testing.T) {
 	log.Printf("Starting TestMoveOperationWithCount")
-	ctx := context.Background()
-	projectID := os.Getenv("GCP_PROJECT")
-	if projectID == "" {
-		t.Fatal("GCP_PROJECT environment variable must be set")
-	}
-
-	// Define test parameters.
-	sourceTopicName := "default-events-dead-letter"
-	sourceSubName := "default-events-dead-letter-subscription"
-	destTopicName := "default-events"
-	destSubName := "default-events-subscription"
+	setup := testhelpers.SetupIntegrationTest(t)
 
 	// Create client and purge subscriptions.
-	client, err := pubsub.NewClient(ctx, projectID)
-	if err != nil {
-		t.Fatalf("Failed to create PubSub client: %v", err)
-	}
-	defer client.Close()
-
-	sourceSub := client.Subscription(sourceSubName)
-	if err := testhelpers.PurgeSubscription(ctx, sourceSub); err != nil {
-		t.Fatalf("Failed to purge source subscription: %v", err)
-	}
-	destSub := client.Subscription(destSubName)
-	destCtx, destCancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer destCancel()
-	if err := testhelpers.PurgeSubscription(destCtx, destSub); err != nil {
-		t.Fatalf("Failed to purge destination subscription: %v", err)
-	}
+	setup.PurgeSubscriptions(t)
 
 	numMessages := 5
 	moveCount := 3
 	testRunValue := "move_test_count"
-	sourceTopic := client.Topic(sourceTopicName)
+	sourceTopic := setup.GetSourceTopic()
 
 	var messages []pubsub.Message
 	for i := 1; i <= numMessages; i++ {
@@ -177,7 +123,7 @@ func TestMoveOperationWithCount(t *testing.T) {
 		})
 	}
 
-	_, err = testhelpers.PublishTestMessages(ctx, sourceTopic, messages, "test-ordering-key")
+	_, err := testhelpers.PublishTestMessages(setup.Context, sourceTopic, messages, "test-ordering-key")
 	if err != nil {
 		t.Fatalf("Failed to publish test messages: %v", err)
 	}
@@ -189,8 +135,8 @@ func TestMoveOperationWithCount(t *testing.T) {
 		"move",
 		"--source-type", "GCP_PUBSUB_SUBSCRIPTION",
 		"--destination-type", "GCP_PUBSUB_TOPIC",
-		"--source", fmt.Sprintf("projects/%s/subscriptions/%s", projectID, sourceSubName),
-		"--destination", fmt.Sprintf("projects/%s/topics/%s", projectID, destTopicName),
+		"--source", fmt.Sprintf("projects/%s/subscriptions/%s", setup.ProjectID, setup.SourceSubName),
+		"--destination", fmt.Sprintf("projects/%s/topics/%s", setup.ProjectID, setup.DestTopicName),
 		"--count", fmt.Sprintf("%d", moveCount),
 	}
 
@@ -201,7 +147,7 @@ func TestMoveOperationWithCount(t *testing.T) {
 	log.Printf("Move command executed with count %d", moveCount)
 
 	expectedLines := []string{
-		fmt.Sprintf("[TIMESTAMP] Moving messages from projects/%s/subscriptions/%s to projects/%s/topics/%s", projectID, sourceSubName, projectID, destTopicName),
+		fmt.Sprintf("[TIMESTAMP] Moving messages from projects/%s/subscriptions/%s to projects/%s/topics/%s", setup.ProjectID, setup.SourceSubName, setup.ProjectID, setup.DestTopicName),
 		"[TIMESTAMP] Pulled message 1",
 		"[TIMESTAMP] Publishing message 1",
 		"[TIMESTAMP] Published message 1 successfully",
@@ -224,7 +170,7 @@ func TestMoveOperationWithCount(t *testing.T) {
 
 	time.Sleep(5 * time.Second)
 	log.Printf("Polling destination subscription for moved messages")
-	movedMessages, err := testhelpers.PollMessages(ctx, destSub, testRunValue, moveCount)
+	movedMessages, err := testhelpers.PollMessages(setup.Context, setup.DestSub, testRunValue, moveCount)
 	if err != nil {
 		t.Fatalf("Error receiving moved messages: %v", err)
 	}
@@ -233,7 +179,7 @@ func TestMoveOperationWithCount(t *testing.T) {
 	}
 
 	log.Printf("Polling source subscription for remaining messages")
-	remainingMessages, err := testhelpers.PollMessages(ctx, sourceSub, testRunValue, numMessages-moveCount)
+	remainingMessages, err := testhelpers.PollMessages(setup.Context, setup.SourceSub, testRunValue, numMessages-moveCount)
 	if err != nil {
 		t.Fatalf("Error receiving remaining messages: %v", err)
 	}
@@ -246,39 +192,16 @@ func TestMoveOperationWithCount(t *testing.T) {
 
 func TestMoveMessageBodyIntegrity(t *testing.T) {
 	// New test to verify that the body content of moved messages remains unchanged.
-	ctx := context.Background()
-	projectID := os.Getenv("GCP_PROJECT")
-	if projectID == "" {
-		t.Fatal("GCP_PROJECT environment variable must be set")
-	}
+	setup := testhelpers.SetupIntegrationTest(t)
 	// Use same names as other tests.
-	sourceTopicName := "default-events-dead-letter"
-	sourceSubName := "default-events-dead-letter-subscription"
-	destTopicName := "default-events"
-	destSubName := "default-events-subscription"
-
-	client, err := pubsub.NewClient(ctx, projectID)
-	if err != nil {
-		t.Fatalf("Failed to create PubSub client: %v", err)
-	}
-	defer client.Close()
 
 	// Purge subscriptions.
-	sourceSub := client.Subscription(sourceSubName)
-	if err := testhelpers.PurgeSubscription(ctx, sourceSub); err != nil {
-		t.Fatalf("Failed to purge source subscription: %v", err)
-	}
-	destSub := client.Subscription(destSubName)
-	destCtx, destCancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer destCancel()
-	if err := testhelpers.PurgeSubscription(destCtx, destSub); err != nil {
-		t.Fatalf("Failed to purge destination subscription: %v", err)
-	}
+	setup.PurgeSubscriptions(t)
 
 	// Prepare messages with unique body content.
 	numMessages := 3
 	testRunValue := "move_test_body_integrity"
-	sourceTopic := client.Topic(sourceTopicName)
+	sourceTopic := setup.GetSourceTopic()
 	var messages []pubsub.Message
 	var expectedBodies []string
 	for i := 1; i <= numMessages; i++ {
@@ -292,7 +215,7 @@ func TestMoveMessageBodyIntegrity(t *testing.T) {
 		})
 	}
 
-	_, err = testhelpers.PublishTestMessages(ctx, sourceTopic, messages, "test-ordering-key")
+	_, err := testhelpers.PublishTestMessages(setup.Context, sourceTopic, messages, "test-ordering-key")
 	if err != nil {
 		t.Fatalf("Failed to publish test messages: %v", err)
 	}
@@ -304,8 +227,8 @@ func TestMoveMessageBodyIntegrity(t *testing.T) {
 		"move",
 		"--source-type", "GCP_PUBSUB_SUBSCRIPTION",
 		"--destination-type", "GCP_PUBSUB_TOPIC",
-		"--source", fmt.Sprintf("projects/%s/subscriptions/%s", projectID, sourceSubName),
-		"--destination", fmt.Sprintf("projects/%s/topics/%s", projectID, destTopicName),
+		"--source", fmt.Sprintf("projects/%s/subscriptions/%s", setup.ProjectID, setup.SourceSubName),
+		"--destination", fmt.Sprintf("projects/%s/topics/%s", setup.ProjectID, setup.DestTopicName),
 		"--count", fmt.Sprintf("%d", numMessages),
 	}
 	actual, err := testhelpers.RunCLICommand(moveArgs)
@@ -315,7 +238,7 @@ func TestMoveMessageBodyIntegrity(t *testing.T) {
 	t.Logf("Move command executed for body integrity test: %s", actual)
 
 	// Poll the destination subscription.
-	received, err := testhelpers.PollMessages(ctx, destSub, testRunValue, numMessages)
+	received, err := testhelpers.PollMessages(setup.Context, setup.DestSub, testRunValue, numMessages)
 	if err != nil {
 		t.Fatalf("Error receiving messages from destination: %v", err)
 	}
