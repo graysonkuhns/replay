@@ -145,9 +145,10 @@ func SetupIntegrationTest(t *testing.T) *TestSetup {
 }
 
 // PurgeSubscriptions purges both source and destination subscriptions
-// Note: With fresh resources, this is typically not needed but kept for backward compatibility
+// Deprecated: This method is no longer needed since tests now create unique resources
+// that don't share topics and subscriptions between tests. Kept for backward compatibility.
 func (s *TestSetup) PurgeSubscriptions(t *testing.T) {
-	log.Printf("Purging subscriptions (fresh resources should already be empty)")
+	log.Printf("Purging subscriptions (deprecated - not needed with unique resources)")
 	// Purge source subscription
 	log.Printf("Purging source subscription: %s", s.SourceSubName)
 	if err := PurgeSubscription(s.Context, s.SourceSub); err != nil {
@@ -162,9 +163,10 @@ func (s *TestSetup) PurgeSubscriptions(t *testing.T) {
 }
 
 // PurgeSourceSubscription purges only the source subscription
-// Note: With fresh resources, this is typically not needed but kept for backward compatibility
+// Deprecated: This method is no longer needed since tests now create unique resources
+// that don't share topics and subscriptions between tests. Kept for backward compatibility.
 func (s *TestSetup) PurgeSourceSubscription(t *testing.T) {
-	log.Printf("Purging source subscription: %s (fresh resources should already be empty)", s.SourceSubName)
+	log.Printf("Purging source subscription: %s (deprecated - not needed with unique resources)", s.SourceSubName)
 	if err := PurgeSubscription(s.Context, s.SourceSub); err != nil {
 		t.Fatalf("Failed to purge source subscription: %v", err)
 	}
