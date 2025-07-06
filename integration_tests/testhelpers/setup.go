@@ -145,7 +145,9 @@ func SetupIntegrationTest(t *testing.T) *TestSetup {
 }
 
 // PurgeSubscriptions purges both source and destination subscriptions
+// Note: With fresh resources, this is typically not needed but kept for backward compatibility
 func (s *TestSetup) PurgeSubscriptions(t *testing.T) {
+	log.Printf("Purging subscriptions (fresh resources should already be empty)")
 	// Purge source subscription
 	log.Printf("Purging source subscription: %s", s.SourceSubName)
 	if err := PurgeSubscription(s.Context, s.SourceSub); err != nil {
@@ -154,16 +156,15 @@ func (s *TestSetup) PurgeSubscriptions(t *testing.T) {
 
 	// Purge destination subscription
 	log.Printf("Purging destination subscription: %s", s.DestSubName)
-	destCtx, destCancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer destCancel()
-	if err := PurgeSubscription(destCtx, s.DestSub); err != nil {
+	if err := PurgeSubscription(s.Context, s.DestSub); err != nil {
 		t.Fatalf("Failed to purge destination subscription: %v", err)
 	}
 }
 
 // PurgeSourceSubscription purges only the source subscription
+// Note: With fresh resources, this is typically not needed but kept for backward compatibility
 func (s *TestSetup) PurgeSourceSubscription(t *testing.T) {
-	log.Printf("Purging source subscription: %s", s.SourceSubName)
+	log.Printf("Purging source subscription: %s (fresh resources should already be empty)", s.SourceSubName)
 	if err := PurgeSubscription(s.Context, s.SourceSub); err != nil {
 		t.Fatalf("Failed to purge source subscription: %v", err)
 	}
