@@ -15,12 +15,10 @@ import (
 )
 
 func TestDLRBinaryEdgeCases(t *testing.T) {
+	t.Parallel()
 	// Test specific binary edge cases that might cause issues in message processing
 	setup := testhelpers.SetupIntegrationTest(t)
 	testRunValue := "dlr_binary_edge_cases_test"
-
-	// Purge subscriptions.
-	setup.PurgeSubscriptions(t)
 
 	// Prepare edge case binary messages
 	numMessages := 4

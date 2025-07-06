@@ -15,12 +15,10 @@ import (
 )
 
 func TestDLRQuitOperation(t *testing.T) {
+	t.Parallel()
 	// Test to verify that the DLR operation correctly handles the quit command
 	setup := testhelpers.SetupIntegrationTest(t)
 	testRunValue := "dlr_quit_test"
-
-	// Purge subscriptions.
-	setup.PurgeSubscriptions(t)
 
 	// Prepare 4 messages with unique body content.
 	numMessages := 4
