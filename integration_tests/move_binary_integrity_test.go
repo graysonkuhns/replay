@@ -18,9 +18,6 @@ func TestMoveBinaryMessageIntegrity(t *testing.T) {
 	setup := testhelpers.SetupIntegrationTest(t)
 	testRunValue := "move_binary_integrity_test"
 
-	// Purge subscriptions.
-	setup.PurgeSubscriptions(t)
-
 	// Prepare different types of binary data
 	numMessages := 3
 	sourceTopic := setup.GetSourceTopic()

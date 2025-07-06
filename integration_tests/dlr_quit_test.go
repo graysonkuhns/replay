@@ -19,9 +19,6 @@ func TestDLRQuitOperation(t *testing.T) {
 	setup := testhelpers.SetupIntegrationTest(t)
 	testRunValue := "dlr_quit_test"
 
-	// Purge subscriptions.
-	setup.PurgeSubscriptions(t)
-
 	// Prepare 4 messages with unique body content.
 	numMessages := 4
 	sourceTopic := setup.GetSourceTopic()

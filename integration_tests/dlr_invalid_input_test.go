@@ -19,9 +19,6 @@ func TestDLRInvalidInputHandling(t *testing.T) {
 	setup := testhelpers.SetupIntegrationTest(t)
 	testRunValue := "dlr_invalid_input_test"
 
-	// Purge subscriptions.
-	setup.PurgeSubscriptions(t)
-
 	// Prepare 2 messages with unique body content.
 	numMessages := 2
 	sourceTopic := setup.GetSourceTopic()

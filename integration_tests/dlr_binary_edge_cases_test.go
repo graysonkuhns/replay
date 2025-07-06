@@ -19,9 +19,6 @@ func TestDLRBinaryEdgeCases(t *testing.T) {
 	setup := testhelpers.SetupIntegrationTest(t)
 	testRunValue := "dlr_binary_edge_cases_test"
 
-	// Purge subscriptions.
-	setup.PurgeSubscriptions(t)
-
 	// Prepare edge case binary messages
 	numMessages := 4
 	sourceTopic := setup.GetSourceTopic()
