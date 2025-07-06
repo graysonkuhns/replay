@@ -14,12 +14,10 @@ import (
 )
 
 func TestMoveBinaryMessageIntegrity(t *testing.T) {
+	t.Parallel()
 	// Test to verify that binary data remains unchanged when moving messages using the move operation.
 	setup := testhelpers.SetupIntegrationTest(t)
 	testRunValue := "move_binary_integrity_test"
-
-	// Purge subscriptions.
-	setup.PurgeSubscriptions(t)
 
 	// Prepare different types of binary data
 	numMessages := 3

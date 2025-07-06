@@ -14,12 +14,10 @@ import (
 )
 
 func TestDLRWithPrettyJSON(t *testing.T) {
+	t.Parallel()
 	// Set up context and PubSub client.
 	setup := testhelpers.SetupIntegrationTest(t)
 	testRunValue := "dlr_pretty_json_test"
-
-	// Purge the dead-letter (source) subscription.
-	setup.PurgeSourceSubscription(t)
 
 	// Create a JSON message for testing
 	jsonData := map[string]interface{}{

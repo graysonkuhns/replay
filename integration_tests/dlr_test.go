@@ -14,12 +14,10 @@ import (
 )
 
 func TestDLROperation(t *testing.T) {
+	t.Parallel()
 	// Set up integration test environment
 	setup := testhelpers.SetupIntegrationTest(t)
 	testRunValue := "dlr_test"
-
-	// Purge the dead-letter (source) subscription.
-	setup.PurgeSourceSubscription(t)
 
 	// Publish two test messages to the dead-letter topic: one to move and one to discard.
 	sourceTopic := setup.GetSourceTopic()

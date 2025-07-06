@@ -16,12 +16,10 @@ func init() {
 }
 
 func TestMoveStopsWhenSourceExhausted(t *testing.T) {
+	t.Parallel()
 	log.Printf("Starting TestMoveStopsWhenSourceExhausted: verifying stop when source runs out of messages")
 	setup := testhelpers.SetupIntegrationTest(t)
 	// For this test, we move messages from the dead letter infrastructure to the normal events infrastructure.
-
-	setup.PurgeSubscriptions(t)
-	log.Printf("Completed purge of subscriptions")
 
 	sourceTopic := setup.GetSourceTopic()
 	numMessages := 3
@@ -102,11 +100,9 @@ func TestMoveStopsWhenSourceExhausted(t *testing.T) {
 }
 
 func TestMoveOperationWithCount(t *testing.T) {
+	t.Parallel()
 	log.Printf("Starting TestMoveOperationWithCount")
 	setup := testhelpers.SetupIntegrationTest(t)
-
-	// Create client and purge subscriptions.
-	setup.PurgeSubscriptions(t)
 
 	numMessages := 5
 	moveCount := 3
@@ -191,12 +187,10 @@ func TestMoveOperationWithCount(t *testing.T) {
 }
 
 func TestMoveMessageBodyIntegrity(t *testing.T) {
+	t.Parallel()
 	// New test to verify that the body content of moved messages remains unchanged.
 	setup := testhelpers.SetupIntegrationTest(t)
 	// Use same names as other tests.
-
-	// Purge subscriptions.
-	setup.PurgeSubscriptions(t)
 
 	// Prepare messages with unique body content.
 	numMessages := 3
