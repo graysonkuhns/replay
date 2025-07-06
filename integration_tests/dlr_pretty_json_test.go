@@ -1,11 +1,9 @@
 package cmd_test
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"testing"
 	"time"
@@ -17,30 +15,11 @@ import (
 
 func TestDLRWithPrettyJSON(t *testing.T) {
 	// Set up context and PubSub client.
-	ctx := context.Background()
-	projectID := os.Getenv("GCP_PROJECT")
-	if projectID == "" {
-		t.Fatal("GCP_PROJECT environment variable must be set")
-	}
-
-	// Define resource names.
-	sourceTopicName := "default-events-dead-letter"
-	sourceSubName := "default-events-dead-letter-subscription"
-	destTopicName := "default-events"
+	setup := testhelpers.SetupIntegrationTest(t)
 	testRunValue := "dlr_pretty_json_test"
 
-	client, err := pubsub.NewClient(ctx, projectID)
-	if err != nil {
-		t.Fatalf("Failed to create PubSub client: %v", err)
-	}
-	defer client.Close()
-
 	// Purge the dead-letter (source) subscription.
-	sourceSub := client.Subscription(sourceSubName)
-	log.Printf("Purging source subscription: %s", sourceSubName)
-	if err := testhelpers.PurgeSubscription(ctx, sourceSub); err != nil {
-		t.Fatalf("Failed to purge source subscription: %v", err)
-	}
+	setup.PurgeSourceSubscription(t)
 
 	// Create a JSON message for testing
 	jsonData := map[string]interface{}{
@@ -68,7 +47,7 @@ func TestDLRWithPrettyJSON(t *testing.T) {
 	}
 
 	// Publish the test message to the dead-letter topic
-	sourceTopic := client.Topic(sourceTopicName)
+	sourceTopic := setup.GetSourceTopic()
 	message := pubsub.Message{
 		Data: jsonBytes,
 		Attributes: map[string]string{
@@ -76,7 +55,7 @@ func TestDLRWithPrettyJSON(t *testing.T) {
 		},
 	}
 
-	_, err = testhelpers.PublishTestMessages(ctx, sourceTopic, []pubsub.Message{message}, "test-ordering-key")
+	_, err = testhelpers.PublishTestMessages(setup.Context, sourceTopic, []pubsub.Message{message}, "test-ordering-key")
 	if err != nil {
 		t.Fatalf("Failed to publish test message: %v", err)
 	}
@@ -89,8 +68,8 @@ func TestDLRWithPrettyJSON(t *testing.T) {
 		"dlr",
 		"--source-type", "GCP_PUBSUB_SUBSCRIPTION",
 		"--destination-type", "GCP_PUBSUB_TOPIC",
-		"--source", fmt.Sprintf("projects/%s/subscriptions/%s", projectID, sourceSubName),
-		"--destination", fmt.Sprintf("projects/%s/topics/%s", projectID, destTopicName),
+		"--source", fmt.Sprintf("projects/%s/subscriptions/%s", setup.ProjectID, setup.SourceSubName),
+		"--destination", fmt.Sprintf("projects/%s/topics/%s", setup.ProjectID, setup.DestTopicName),
 		"--pretty-json", // Enable pretty JSON output
 	}
 
@@ -117,7 +96,7 @@ func TestDLRWithPrettyJSON(t *testing.T) {
 
 	// Define expected output substrings.
 	expectedLines := []string{
-		fmt.Sprintf("Starting DLR review from projects/%s/subscriptions/%s", projectID, sourceSubName),
+		fmt.Sprintf("Starting DLR review from projects/%s/subscriptions/%s", setup.ProjectID, setup.SourceSubName),
 		"",
 		"Message 1:",
 		"Data (pretty JSON):",
@@ -130,5 +109,5 @@ func TestDLRWithPrettyJSON(t *testing.T) {
 
 	testhelpers.AssertCLIOutput(t, actual, expectedLines)
 
-	log.Printf("Successfully verified pretty JSON output formatting")
+	t.Logf("Successfully verified pretty JSON output formatting")
 }

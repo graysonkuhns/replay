@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"testing"
 	"time"
@@ -104,7 +103,7 @@ func TestDLRJSONMessageIntegrity(t *testing.T) {
 		})
 	}
 
-	_, err := testhelpers.PublishTestMessages(setup.Context, sourceTopic, messages, "json-test-ordering-key")
+	_, err = testhelpers.PublishTestMessages(setup.Context, sourceTopic, messages, "json-test-ordering-key")
 	if err != nil {
 		t.Fatalf("Failed to publish JSON test messages: %v", err)
 	}
@@ -204,7 +203,7 @@ func TestDLRJSONMessageIntegrity(t *testing.T) {
 	}
 
 	// Verify that the source subscription is empty (all messages were moved)
-	sourceReceived, err := testhelpers.PollMessages(ctx, sourceSub, testRunValue, 0)
+	sourceReceived, err := testhelpers.PollMessages(setup.Context, setup.SourceSub, testRunValue, 0)
 	if err != nil {
 		t.Fatalf("Error polling source subscription: %v", err)
 	}

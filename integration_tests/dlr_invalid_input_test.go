@@ -16,41 +16,15 @@ import (
 
 func TestDLRInvalidInputHandling(t *testing.T) {
 	// Test to verify that the DLR operation correctly handles invalid input by asking again
-	ctx := context.Background()
-	projectID := os.Getenv("GCP_PROJECT")
-	if projectID == "" {
-		t.Fatal("GCP_PROJECT environment variable must be set")
-	}
-
-	// Define resource names.
-	sourceTopicName := "default-events-dead-letter"
-	sourceSubName := "default-events-dead-letter-subscription"
-	destTopicName := "default-events"
-	destSubName := "default-events-subscription"
+	setup := testhelpers.SetupIntegrationTest(t)
 	testRunValue := "dlr_invalid_input_test"
 
-	client, err := pubsub.NewClient(ctx, projectID)
-	if err != nil {
-		t.Fatalf("Failed to create PubSub client: %v", err)
-	}
-	defer client.Close()
-
 	// Purge subscriptions.
-	sourceSub := client.Subscription(sourceSubName)
-	log.Printf("Purging source subscription: %s", sourceSubName)
-	if err := testhelpers.PurgeSubscription(ctx, sourceSub); err != nil {
-		t.Fatalf("Failed to purge source subscription: %v", err)
-	}
-	destSub := client.Subscription(destSubName)
-	destCtx, destCancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer destCancel()
-	if err := testhelpers.PurgeSubscription(destCtx, destSub); err != nil {
-		t.Fatalf("Failed to purge destination subscription: %v", err)
-	}
+	setup.PurgeSubscriptions(t)
 
 	// Prepare 2 messages with unique body content.
 	numMessages := 2
-	sourceTopic := client.Topic(sourceTopicName)
+	sourceTopic := setup.GetSourceTopic()
 	var messages []pubsub.Message
 	orderingKey := "test-ordering-key"
 
@@ -64,7 +38,7 @@ func TestDLRInvalidInputHandling(t *testing.T) {
 		})
 	}
 
-	_, err = testhelpers.PublishTestMessages(ctx, sourceTopic, messages, orderingKey)
+	_, err := testhelpers.PublishTestMessages(setup.Context, sourceTopic, messages, orderingKey)
 	if err != nil {
 		t.Fatalf("Failed to publish test messages with ordering key: %v", err)
 	}
@@ -77,8 +51,8 @@ func TestDLRInvalidInputHandling(t *testing.T) {
 		"dlr",
 		"--source-type", "GCP_PUBSUB_SUBSCRIPTION",
 		"--destination-type", "GCP_PUBSUB_TOPIC",
-		"--source", fmt.Sprintf("projects/%s/subscriptions/%s", projectID, sourceSubName),
-		"--destination", fmt.Sprintf("projects/%s/topics/%s", projectID, destTopicName),
+		"--source", fmt.Sprintf("projects/%s/subscriptions/%s", setup.ProjectID, setup.SourceSubName),
+		"--destination", fmt.Sprintf("projects/%s/topics/%s", setup.ProjectID, setup.DestTopicName),
 	}
 
 	// Simulate user inputs:
@@ -109,7 +83,7 @@ func TestDLRInvalidInputHandling(t *testing.T) {
 
 	// Define expected output substrings.
 	expectedLines := []string{
-		fmt.Sprintf("Starting DLR review from projects/%s/subscriptions/%s", projectID, sourceSubName),
+		fmt.Sprintf("Starting DLR review from projects/%s/subscriptions/%s", setup.ProjectID, setup.SourceSubName),
 		"",
 		"Message 1:",
 		"Data:",
@@ -137,7 +111,7 @@ func TestDLRInvalidInputHandling(t *testing.T) {
 
 	// Poll the destination subscription for moved messages.
 	// We expect exactly 1 message to be moved (message 1).
-	received, err := testhelpers.PollMessages(ctx, destSub, testRunValue, 1)
+	received, err := testhelpers.PollMessages(setup.Context, setup.DestSub, testRunValue, 1)
 	if err != nil {
 		t.Fatalf("Error receiving messages from destination: %v", err)
 	}
@@ -158,11 +132,11 @@ func TestDLRInvalidInputHandling(t *testing.T) {
 
 	// Create a custom receiver function to check for any messages
 	var foundMessage bool
-	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	cctx, cancel := context.WithTimeout(setup.Context, 5*time.Second)
 	defer cancel()
 
 	// Use Receive directly instead of PollMessages
-	err = sourceSub.Receive(cctx, func(ctx context.Context, m *pubsub.Message) {
+	err = setup.SourceSub.Receive(cctx, func(ctx context.Context, m *pubsub.Message) {
 		if m.Attributes["testRun"] == testRunValue {
 			foundMessage = true
 			m.Ack()
