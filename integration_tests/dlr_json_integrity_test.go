@@ -14,6 +14,7 @@ import (
 )
 
 func TestDLRJSONMessageIntegrity(t *testing.T) {
+	t.Parallel()
 	setup := testhelpers.SetupIntegrationTest(t)
 	testRunValue := "dlr_json_integrity_test"
 

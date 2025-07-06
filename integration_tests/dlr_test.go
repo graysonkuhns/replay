@@ -14,6 +14,7 @@ import (
 )
 
 func TestDLROperation(t *testing.T) {
+	t.Parallel()
 	// Set up integration test environment
 	setup := testhelpers.SetupIntegrationTest(t)
 	testRunValue := "dlr_test"

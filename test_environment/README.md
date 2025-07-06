@@ -22,4 +22,12 @@
 - Tests automatically clean up their resources after completion
 - You only need to ensure the `GCP_PROJECT` environment variable is set
 
+### Parallel Execution
+
+Integration tests now run in parallel by default, significantly reducing execution time. The `run_tests.sh` script supports configurable parallelism:
+
+- Default: 4 concurrent tests
+- Configurable via `PARALLEL_TESTS` environment variable
+- Example: `PARALLEL_TESTS=8 ./run_tests.sh` to run 8 tests concurrently
+
 The Terraform configuration in this directory can still be used to create a shared test environment if needed for manual testing or other purposes.

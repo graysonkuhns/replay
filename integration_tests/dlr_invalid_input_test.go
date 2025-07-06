@@ -15,6 +15,7 @@ import (
 )
 
 func TestDLRInvalidInputHandling(t *testing.T) {
+	t.Parallel()
 	// Test to verify that the DLR operation correctly handles invalid input by asking again
 	setup := testhelpers.SetupIntegrationTest(t)
 	testRunValue := "dlr_invalid_input_test"

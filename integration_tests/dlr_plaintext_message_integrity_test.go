@@ -13,6 +13,7 @@ import (
 )
 
 func TestDLRPlaintextMessageIntegrity(t *testing.T) {
+	t.Parallel()
 	// Test to verify that the plaintext body content of moved messages remains unchanged when using the DLR operation.
 	setup := testhelpers.SetupIntegrationTest(t)
 	testRunValue := "dlr_plaintext_integrity_test"

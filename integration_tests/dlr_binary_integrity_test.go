@@ -16,6 +16,7 @@ import (
 )
 
 func TestDLRBinaryMessageIntegrity(t *testing.T) {
+	t.Parallel()
 	// Test to verify that binary data remains unchanged when moved using the DLR operation.
 	setup := testhelpers.SetupIntegrationTest(t)
 	testRunValue := "dlr_binary_integrity_test"
