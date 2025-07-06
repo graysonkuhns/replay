@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"log"
 	"strings"
 	"sync"
@@ -101,7 +102,7 @@ Each message is polled, published, and acknowledged sequentially.`,
 			pollCancel()
 			if err != nil {
 				// Exit loop if no messages are available within timeout.
-				if strings.Contains(err.Error(), "DeadlineExceeded") {
+				if errors.Is(err, context.DeadlineExceeded) || strings.Contains(err.Error(), "DeadlineExceeded") {
 					log.Printf("No messages received within timeout")
 					break
 				}
