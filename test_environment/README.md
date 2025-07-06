@@ -12,3 +12,14 @@
 * Create terraform variables file - `cp terraform.tfvars.template terraform.tfvars`
 * Update values in `terraform.tfvars` file
 * Install terraform modules - `terraform init`
+
+## Integration Tests
+
+**Note:** As of the latest version, integration tests now create their own fresh GCP Pub/Sub resources (topics and subscriptions) for each test run. This means:
+
+- Each test gets isolated resources with unique names
+- Tests no longer depend on pre-existing Terraform-managed resources
+- Tests automatically clean up their resources after completion
+- You only need to ensure the `GCP_PROJECT` environment variable is set
+
+The Terraform configuration in this directory can still be used to create a shared test environment if needed for manual testing or other purposes.
