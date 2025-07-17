@@ -26,6 +26,7 @@ var dlrCmd = &cobra.Command{
 	Long: `Interactively review dead-lettered messages and choose to discard or move each message.
 For moved messages, the message is republished to the destination.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		log.SetOutput(os.Stdout)
 		// Parse flags
 		sourceType, _ := cmd.Flags().GetString("source-type")
 		destType, _ := cmd.Flags().GetString("destination-type")
@@ -84,7 +85,6 @@ For moved messages, the message is republished to the destination.`,
 		// Loop to pull messages interactively
 		for {
 			msgNum := processed + 1
-			log.Printf("Polling for message %d...", msgNum)
 			pollCtx, pollCancel := context.WithTimeout(ctx, time.Duration(pollTimeoutSec)*time.Second)
 			req := &pubsubpb.PullRequest{
 				Subscription: source,
@@ -94,14 +94,12 @@ For moved messages, the message is republished to the destination.`,
 			pollCancel()
 			if err != nil {
 				if strings.Contains(err.Error(), "DeadlineExceeded") {
-					log.Printf("No messages received within timeout")
 					break
 				}
 				log.Printf("Error during message pull: %v", err)
 				continue
 			}
 			if len(resp.ReceivedMessages) == 0 {
-				log.Printf("No messages received")
 				break
 			}
 			receivedMsg := resp.ReceivedMessages[0]
@@ -137,7 +135,6 @@ For moved messages, the message is republished to the destination.`,
 			}
 
 			if input == "m" {
-				log.Printf("Publishing message %d...", msgNum)
 				result := topic.Publish(ctx, &pubsub.Message{
 					Data:       receivedMsg.Message.Data,
 					Attributes: receivedMsg.Message.Attributes,
@@ -147,15 +144,12 @@ For moved messages, the message is republished to the destination.`,
 					log.Printf("Failed to publish message %d: %v", msgNum, err)
 					continue
 				}
-				log.Printf("Published message %d successfully", msgNum)
 				fmt.Printf("Message %d moved successfully\n", msgNum)
 			} else if input == "d" {
 				fmt.Printf("Message %d discarded (acked)\n", msgNum)
 			} else if input == "q" {
 				fmt.Printf("Quitting review...\n")
 				// When quitting, do not acknowledge the message
-				// We need to explicitly log this so the test can verify the behavior
-				log.Printf("Leaving message %d unacknowledged in the subscription", msgNum)
 				break
 			}
 
@@ -169,8 +163,6 @@ For moved messages, the message is republished to the destination.`,
 				}
 				if err := subscriberClient.Acknowledge(ctx, ackReq); err != nil {
 					log.Printf("Failed to acknowledge message %d: %v", msgNum, err)
-				} else {
-					log.Printf("Acknowledged message %d", msgNum)
 				}
 
 				processed++
