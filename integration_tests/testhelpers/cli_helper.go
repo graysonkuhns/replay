@@ -4,18 +4,12 @@ import (
 	"bytes"
 	"os"
 	"regexp"
-	"sync"
 	"replay/cmd"
 )
-
-var cliMutex sync.Mutex
 
 // RunCLICommand sets up the CLI arguments, executes the CLI tool,
 // captures its output and replaces timestamps with "[TIMESTAMP]".
 func RunCLICommand(args []string) (string, error) {
-	cliMutex.Lock()
-	defer cliMutex.Unlock()
-
 	origArgs := os.Args
 	origStdin := os.Stdin
 	defer func() { 
