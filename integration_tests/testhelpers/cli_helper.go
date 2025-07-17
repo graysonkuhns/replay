@@ -5,16 +5,27 @@ import (
 	"os"
 	"regexp"
 	"replay/cmd"
+	"sync"
 )
+
+// outputMutex protects global stdout redirection during CLI execution
+var outputMutex sync.Mutex
 
 // RunCLICommand sets up the CLI arguments, executes the CLI tool,
 // captures its output and replaces timestamps with "[TIMESTAMP]".
 func RunCLICommand(args []string) (string, error) {
+	outputMutex.Lock()
+	defer outputMutex.Unlock()
+	
 	origArgs := os.Args
-	defer func() { os.Args = origArgs }()
+	origStdin := os.Stdin
+	defer func() { 
+		os.Args = origArgs
+		os.Stdin = origStdin
+	}()
+	
 	os.Args = append([]string{"replay"}, args...)
 
-	// Capture CLI output using os.Pipe.
 	r, w, err := os.Pipe()
 	if err != nil {
 		return "", err
@@ -22,10 +33,10 @@ func RunCLICommand(args []string) (string, error) {
 	oldOut := os.Stdout
 	os.Stdout = w
 
-	// Execute the CLI command.
+	// Execute the CLI command
 	cmd.Execute()
 
-	// Restore os.Stdout.
+	// Restore os.Stdout
 	w.Close()
 	os.Stdout = oldOut
 

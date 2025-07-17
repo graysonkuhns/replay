@@ -67,13 +67,13 @@ func SetupIntegrationTest(t *testing.T) *TestSetup {
 	if err != nil {
 		t.Fatalf("Failed to create source topic %s: %v", sourceTopicName, err)
 	}
-	log.Printf("Created source topic: %s", sourceTopicName)
+	fmt.Fprintf(os.Stderr, "[SETUP] Created source topic: %s\n", sourceTopicName)
 
 	destTopic, err := client.CreateTopic(ctx, destTopicName)
 	if err != nil {
 		t.Fatalf("Failed to create destination topic %s: %v", destTopicName, err)
 	}
-	log.Printf("Created destination topic: %s", destTopicName)
+	fmt.Fprintf(os.Stderr, "[SETUP] Created destination topic: %s\n", destTopicName)
 
 	// Create subscriptions
 	sourceSub, err := client.CreateSubscription(ctx, sourceSubName, pubsub.SubscriptionConfig{
@@ -83,7 +83,7 @@ func SetupIntegrationTest(t *testing.T) *TestSetup {
 	if err != nil {
 		t.Fatalf("Failed to create source subscription %s: %v", sourceSubName, err)
 	}
-	log.Printf("Created source subscription: %s", sourceSubName)
+	fmt.Fprintf(os.Stderr, "[SETUP] Created source subscription: %s\n", sourceSubName)
 
 	destSub, err := client.CreateSubscription(ctx, destSubName, pubsub.SubscriptionConfig{
 		Topic:       destTopic,
@@ -92,7 +92,7 @@ func SetupIntegrationTest(t *testing.T) *TestSetup {
 	if err != nil {
 		t.Fatalf("Failed to create destination subscription %s: %v", destSubName, err)
 	}
-	log.Printf("Created destination subscription: %s", destSubName)
+	fmt.Fprintf(os.Stderr, "[SETUP] Created destination subscription: %s\n", destSubName)
 
 	setup := &TestSetup{
 		Context:         ctx,
@@ -110,32 +110,32 @@ func SetupIntegrationTest(t *testing.T) *TestSetup {
 
 	// Setup cleanup to delete resources after test
 	t.Cleanup(func() {
-		log.Printf("Cleaning up resources for test: %s", testName)
+		fmt.Fprintf(os.Stderr, "[CLEANUP] Cleaning up resources for test: %s\n", testName)
 
 		// Delete subscriptions first
 		if err := sourceSub.Delete(ctx); err != nil {
-			log.Printf("Failed to delete source subscription %s: %v", sourceSubName, err)
+			fmt.Fprintf(os.Stderr, "[CLEANUP] Failed to delete source subscription %s: %v\n", sourceSubName, err)
 		} else {
-			log.Printf("Deleted source subscription: %s", sourceSubName)
+			fmt.Fprintf(os.Stderr, "[CLEANUP] Deleted source subscription: %s\n", sourceSubName)
 		}
 
 		if err := destSub.Delete(ctx); err != nil {
-			log.Printf("Failed to delete destination subscription %s: %v", destSubName, err)
+			fmt.Fprintf(os.Stderr, "[CLEANUP] Failed to delete destination subscription %s: %v\n", destSubName, err)
 		} else {
-			log.Printf("Deleted destination subscription: %s", destSubName)
+			fmt.Fprintf(os.Stderr, "[CLEANUP] Deleted destination subscription: %s\n", destSubName)
 		}
 
 		// Delete topics
 		if err := sourceTopic.Delete(ctx); err != nil {
-			log.Printf("Failed to delete source topic %s: %v", sourceTopicName, err)
+			fmt.Fprintf(os.Stderr, "[CLEANUP] Failed to delete source topic %s: %v\n", sourceTopicName, err)
 		} else {
-			log.Printf("Deleted source topic: %s", sourceTopicName)
+			fmt.Fprintf(os.Stderr, "[CLEANUP] Deleted source topic: %s\n", sourceTopicName)
 		}
 
 		if err := destTopic.Delete(ctx); err != nil {
-			log.Printf("Failed to delete destination topic %s: %v", destTopicName, err)
+			fmt.Fprintf(os.Stderr, "[CLEANUP] Failed to delete destination topic %s: %v\n", destTopicName, err)
 		} else {
-			log.Printf("Deleted destination topic: %s", destTopicName)
+			fmt.Fprintf(os.Stderr, "[CLEANUP] Deleted destination topic: %s\n", destTopicName)
 		}
 
 		client.Close()
