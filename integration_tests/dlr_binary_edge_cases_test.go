@@ -97,7 +97,6 @@ func TestDLRBinaryEdgeCases(t *testing.T) {
 	// Write "m" for each message to move them all
 	var inputs string
 	for i := 0; i < numMessages; i++ {
-		time.Sleep(2 * time.Second)
 		inputs += "m\n"
 	}
 

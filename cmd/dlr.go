@@ -26,7 +26,6 @@ var dlrCmd = &cobra.Command{
 	Long: `Interactively review dead-lettered messages and choose to discard or move each message.
 For moved messages, the message is republished to the destination.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		log.SetOutput(os.Stdout)
 		// Parse flags
 		sourceType, _ := cmd.Flags().GetString("source-type")
 		destType, _ := cmd.Flags().GetString("destination-type")
