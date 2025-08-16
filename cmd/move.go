@@ -13,10 +13,10 @@ import (
 	"os"
 
 	"cloud.google.com/go/pubsub"
-	pubsubapiv1 "cloud.google.com/go/pubsub/apiv1"
+	pubsubapiv1 "cloud.google.com/go/pubsub/v2/apiv1"
 	"github.com/spf13/cobra"
 
-	"cloud.google.com/go/pubsub/apiv1/pubsubpb"
+	pubsubpb "cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"
 )
 
 // moveCmd represents the move command
@@ -81,7 +81,7 @@ Each message is polled, published, and acknowledged sequentially.`,
 		topic := topicClient.Topic(topicParts[3])
 
 		// Create low-level Subscriber client for manual pull
-		subscriberClient, err := pubsubapiv1.NewSubscriberClient(ctx)
+		subscriberClient, err := pubsubapiv1.NewSubscriptionAdminClient(ctx)
 		if err != nil {
 			log.Fatalf("Failed to create subscriber client: %v", err)
 		}
