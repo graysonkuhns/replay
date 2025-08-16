@@ -144,34 +144,6 @@ func SetupIntegrationTest(t *testing.T) *TestSetup {
 	return setup
 }
 
-// PurgeSubscriptions purges both source and destination subscriptions
-// Deprecated: This method is no longer needed since tests now create unique resources
-// that don't share topics and subscriptions between tests. Kept for backward compatibility.
-func (s *TestSetup) PurgeSubscriptions(t *testing.T) {
-	log.Printf("Purging subscriptions (deprecated - not needed with unique resources)")
-	// Purge source subscription
-	log.Printf("Purging source subscription: %s", s.SourceSubName)
-	if err := PurgeSubscription(s.Context, s.SourceSub); err != nil {
-		t.Fatalf("Failed to purge source subscription: %v", err)
-	}
-
-	// Purge destination subscription
-	log.Printf("Purging destination subscription: %s", s.DestSubName)
-	if err := PurgeSubscription(s.Context, s.DestSub); err != nil {
-		t.Fatalf("Failed to purge destination subscription: %v", err)
-	}
-}
-
-// PurgeSourceSubscription purges only the source subscription
-// Deprecated: This method is no longer needed since tests now create unique resources
-// that don't share topics and subscriptions between tests. Kept for backward compatibility.
-func (s *TestSetup) PurgeSourceSubscription(t *testing.T) {
-	log.Printf("Purging source subscription: %s (deprecated - not needed with unique resources)", s.SourceSubName)
-	if err := PurgeSubscription(s.Context, s.SourceSub); err != nil {
-		t.Fatalf("Failed to purge source subscription: %v", err)
-	}
-}
-
 // GetSourceTopic returns the source topic
 func (s *TestSetup) GetSourceTopic() *pubsub.Topic {
 	return s.SourceTopic
