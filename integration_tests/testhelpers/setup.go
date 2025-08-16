@@ -76,16 +76,18 @@ func SetupIntegrationTest(t *testing.T) *TestSetup {
 
 	// Create subscriptions
 	sourceSub, err := client.CreateSubscription(ctx, sourceSubName, pubsub.SubscriptionConfig{
-		Topic:       sourceTopic,
-		AckDeadline: 60 * time.Second,
+		Topic:                 sourceTopic,
+		AckDeadline:           60 * time.Second,
+		EnableMessageOrdering: true,
 	})
 	if err != nil {
 		t.Fatalf("Failed to create source subscription %s: %v", sourceSubName, err)
 	}
 
 	destSub, err := client.CreateSubscription(ctx, destSubName, pubsub.SubscriptionConfig{
-		Topic:       destTopic,
-		AckDeadline: 60 * time.Second,
+		Topic:                 destTopic,
+		AckDeadline:           60 * time.Second,
+		EnableMessageOrdering: true,
 	})
 	if err != nil {
 		t.Fatalf("Failed to create destination subscription %s: %v", destSubName, err)
