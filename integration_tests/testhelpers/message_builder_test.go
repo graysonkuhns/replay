@@ -24,7 +24,7 @@ func TestTestMessageBuilder(t *testing.T) {
 
 	// Test WithAttributes and chaining
 	builder.WithAttributes(map[string]string{
-		"testRun": "test-123",
+		"testRun":  "test-123",
 		"priority": "high",
 	}).WithTextMessage("Second message")
 
@@ -63,8 +63,8 @@ func TestTestMessageBuilderJSON(t *testing.T) {
 	builder := testhelpers.NewTestMessageBuilder()
 
 	testData := map[string]interface{}{
-		"id": 123,
-		"name": "Test JSON",
+		"id":     123,
+		"name":   "Test JSON",
 		"active": true,
 	}
 
