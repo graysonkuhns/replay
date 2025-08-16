@@ -72,8 +72,6 @@ func PublishTestMessages(ctx context.Context, topic *pubsub.Topic, messages []pu
 				Attributes:  msg.Attributes,
 				OrderingKey: orderingKey,
 			}
-		} else {
-			// log.Printf("Publishing message %d", i+1)
 		}
 
 		result := topic.Publish(ctx, msgToPublish)
@@ -100,8 +98,6 @@ func PollMessages(ctx context.Context, sub *pubsub.Subscription, testRunValue st
 			// Suppress logs to avoid interfering with parallel test output
 			// log.Printf("Received test message: %s", string(m.Data))
 			received = append(received, m)
-		} else {
-			// log.Printf("Ignoring non-test message: %s", string(m.Data))
 		}
 		m.Ack()
 		if len(received) >= expectedCount {
