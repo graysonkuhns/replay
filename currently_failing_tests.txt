@@ -1,7 +1,0 @@
-TestMoveStopsWhenSourceExhausted
-TestDLRQuitOperation
-TestDLROperation
-TestMoveOperationWithCount
-TestDLRWithPrettyJSON
-TestDLRPlaintextMessageIntegrity
-TestDLRInvalidInputHandling
