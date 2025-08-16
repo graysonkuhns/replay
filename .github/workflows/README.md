@@ -1,6 +1,8 @@
 # GitHub Actions Integration Tests
 
-This repository includes a GitHub Actions workflow that automatically runs integration tests for pull requests from trusted authors.
+This repository includes GitHub Actions workflows that automatically run integration tests:
+1. **PR Integration Tests** - Run on pull requests from trusted authors
+2. **Nightly Integration Tests** - Run automatically every night at 2 AM UTC
 
 ## Required Secrets
 
@@ -22,10 +24,21 @@ The Google Cloud Platform project ID where the integration test resources will b
 
 ## Workflow Behavior
 
+### PR Integration Tests
 - **Trigger**: Runs on pull request events (opened, synchronize, reopened)
+- **Parallelism**: Limited to 1 concurrent test for resource efficiency
 - **Integration Tests**: Run the integration tests
-- **Timeout**: Tests have a 25-minute timeout (5 minutes more than the script's 20-minute timeout)
-- **Artifacts**: Test logs are uploaded as artifacts for debugging
+- **Timeout**: Tests have a 50-minute timeout
+- **Artifacts**: Test logs are uploaded as artifacts for 7 days
+
+### Nightly Integration Tests
+- **Trigger**: Runs automatically every night at 2 AM UTC
+- **Manual Trigger**: Can also be triggered manually via workflow_dispatch
+- **Parallelism**: Uses default parallelism (4 concurrent tests) for better performance
+- **Integration Tests**: Run all integration tests
+- **Timeout**: Tests have a 50-minute timeout
+- **Artifacts**: Test logs are uploaded as artifacts for 30 days
+- **Failure Handling**: Automatically creates GitHub issues when tests fail
 
 ## Test Script
 
