@@ -175,7 +175,7 @@ func init() {
 	moveCmd.Flags().String("source", "", "Full source resource name (e.g. projects/<proj>/subscriptions/<sub>)")
 	moveCmd.Flags().String("destination", "", "Full destination resource name (e.g. projects/<proj>/topics/<topic>)")
 	moveCmd.Flags().Int("count", 0, "Number of messages to move (0 for unlimited, continues until source is exhausted)")
-	moveCmd.Flags().Int("polling-timeout-seconds", 5, "Timeout in seconds for polling a single message")
+	moveCmd.Flags().Int("polling-timeout-seconds", 10, "Timeout in seconds for polling a single message")
 
 	// Make flags required except for count
 	moveCmd.MarkFlagRequired("source-type")

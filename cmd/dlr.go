@@ -189,7 +189,7 @@ func init() {
 	dlrCmd.Flags().String("destination", "", "Full destination resource name (e.g. projects/<proj>/topics/<topic>)")
 	dlrCmd.Flags().Int("count", 0, "Number of messages to process (0 for all messages)")
 	dlrCmd.Flags().Bool("pretty-json", false, "Display message data as pretty JSON")
-	dlrCmd.Flags().Int("polling-timeout-seconds", 5, "Timeout in seconds for polling a single message")
+	dlrCmd.Flags().Int("polling-timeout-seconds", 10, "Timeout in seconds for polling a single message")
 	dlrCmd.MarkFlagRequired("source-type")
 	dlrCmd.MarkFlagRequired("destination-type")
 	dlrCmd.MarkFlagRequired("source")
