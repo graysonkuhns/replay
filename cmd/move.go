@@ -158,6 +158,11 @@ Each message is polled, published, and acknowledged sequentially.`,
 		}
 
 		log.Printf("Move operation completed. Total messages moved: %d", processed)
+
+		// Ensure all log output is flushed before exiting
+		if f, ok := log.Writer().(*os.File); ok {
+			f.Sync()
+		}
 	},
 }
 
