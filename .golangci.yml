@@ -1,0 +1,36 @@
+linters-settings:
+  gci:
+    sections:
+      - standard
+      - default
+      - prefix(replay)
+  gofmt:
+    simplify: true
+  goimports:
+    local-prefixes: replay
+  misspell:
+    locale: US
+
+linters:
+  enable:
+    - gofmt
+    - goimports
+    - govet
+    - ineffassign
+    - misspell
+    - errcheck
+    - gosimple
+    - staticcheck
+    - unused
+  disable-all: false
+
+run:
+  timeout: 5m
+  go: "1.23"
+
+issues:
+  exclude-rules:
+    # Exclude some linters from running on tests files.
+    - path: _test\.go
+      linters:
+        - errcheck

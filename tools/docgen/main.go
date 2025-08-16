@@ -5,8 +5,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/spf13/cobra/doc"
 	"replay/cmd"
+
+	"github.com/spf13/cobra/doc"
 )
 
 func main() {
