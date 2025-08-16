@@ -39,7 +39,7 @@ jobs:
         run: |
           chmod +x ./run_tests.sh
           # Use default parallelism (4) for nightly runs since we have more time
-          ./run_tests.sh
+          PARALLEL_TESTS=1 ./run_tests.sh
         timeout-minutes: 50
 
       - name: Upload test results
