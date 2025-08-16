@@ -14,8 +14,8 @@ import (
 
 	"cloud.google.com/go/pubsub"
 	pubsubapiv1 "cloud.google.com/go/pubsub/apiv1"
+	pubsubpb "cloud.google.com/go/pubsub/apiv1/pubsubpb"
 	"github.com/spf13/cobra"
-	pubsubpb "google.golang.org/genproto/googleapis/pubsub/v1"
 )
 
 // dlrCmd represents the dlr command
