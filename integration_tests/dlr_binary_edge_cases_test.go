@@ -20,6 +20,11 @@ func TestDLRBinaryEdgeCases(t *testing.T) {
 	setup := testhelpers.SetupIntegrationTest(t)
 	testRunValue := "dlr_binary_edge_cases_test"
 
+	// Purge any existing messages from the source subscription to ensure test isolation
+	if err := testhelpers.PurgeSubscription(setup.Context, setup.SourceSub); err != nil {
+		t.Fatalf("Failed to purge source subscription: %v", err)
+	}
+
 	// Prepare edge case binary messages
 	numMessages := 4
 	sourceTopic := setup.GetSourceTopic()
@@ -76,7 +81,7 @@ func TestDLRBinaryEdgeCases(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to publish binary test messages: %v", err)
 	}
-	time.Sleep(15 * time.Second) // Wait for messages to arrive in the subscription
+	time.Sleep(30 * time.Second) // Wait for messages to arrive in the subscription
 
 	// Prepare CLI arguments for the dlr command.
 	dlrArgs := []string{
@@ -97,7 +102,6 @@ func TestDLRBinaryEdgeCases(t *testing.T) {
 	// Write "m" for each message to move them all
 	var inputs string
 	for i := 0; i < numMessages; i++ {
-		time.Sleep(2 * time.Second)
 		inputs += "m\n"
 	}
 
@@ -118,7 +122,7 @@ func TestDLRBinaryEdgeCases(t *testing.T) {
 	t.Logf("DLR command executed for binary edge cases test")
 
 	// Allow time for moved messages to propagate.
-	time.Sleep(5 * time.Second)
+	time.Sleep(20 * time.Second)
 
 	// Poll the destination subscription for moved messages.
 	received, err := testhelpers.PollMessages(setup.Context, setup.DestSub, testRunValue, numMessages)

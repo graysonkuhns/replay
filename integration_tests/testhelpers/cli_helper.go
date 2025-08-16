@@ -8,36 +8,56 @@ import (
 )
 
 // RunCLICommand sets up the CLI arguments, executes the CLI tool,
-// captures its output and replaces timestamps with "[TIMESTAMP]".
+// captures both stdout and stderr output and replaces timestamps with "[TIMESTAMP]".
 func RunCLICommand(args []string) (string, error) {
 	origArgs := os.Args
 	defer func() { os.Args = origArgs }()
 	os.Args = append([]string{"replay"}, args...)
 
-	// Capture CLI output using os.Pipe.
-	r, w, err := os.Pipe()
+	// Capture stdout using os.Pipe.
+	rOut, wOut, err := os.Pipe()
 	if err != nil {
 		return "", err
 	}
 	oldOut := os.Stdout
-	os.Stdout = w
+	os.Stdout = wOut
+
+	// Capture stderr using os.Pipe.
+	rErr, wErr, err := os.Pipe()
+	if err != nil {
+		return "", err
+	}
+	oldErr := os.Stderr
+	os.Stderr = wErr
 
 	// Execute the CLI command.
 	cmd.Execute()
 
-	// Restore os.Stdout.
-	w.Close()
+	// Restore os.Stdout and os.Stderr.
+	wOut.Close()
+	wErr.Close()
 	os.Stdout = oldOut
+	os.Stderr = oldErr
 
-	var buf bytes.Buffer
-	if _, err := buf.ReadFrom(r); err != nil {
-		r.Close()
+	// Read from both pipes.
+	var bufOut, bufErr bytes.Buffer
+	if _, err := bufOut.ReadFrom(rOut); err != nil {
+		rOut.Close()
+		rErr.Close()
 		return "", err
 	}
-	r.Close()
+	rOut.Close()
+
+	if _, err := bufErr.ReadFrom(rErr); err != nil {
+		rErr.Close()
+		return "", err
+	}
+	rErr.Close()
+
+	// Combine stdout and stderr output.
+	output := bufOut.String() + bufErr.String()
 
 	// Replace timestamp parts with a token.
-	output := buf.String()
 	tsRe := regexp.MustCompile(`\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}`)
 	output = tsRe.ReplaceAllString(output, "[TIMESTAMP]")
 

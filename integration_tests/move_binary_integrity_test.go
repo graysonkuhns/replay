@@ -79,7 +79,7 @@ func TestMoveBinaryMessageIntegrity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to publish binary test messages: %v", err)
 	}
-	time.Sleep(15 * time.Second) // Wait for messages to arrive in the subscription
+	time.Sleep(30 * time.Second) // Wait for messages to arrive in the subscription
 
 	// Run the move command.
 	moveArgs := []string{
@@ -98,7 +98,7 @@ func TestMoveBinaryMessageIntegrity(t *testing.T) {
 	t.Logf("Move command executed for binary integrity test: %s", actual)
 
 	// Allow time for moved messages to propagate.
-	time.Sleep(5 * time.Second)
+	time.Sleep(20 * time.Second)
 
 	// Poll the destination subscription for moved messages.
 	received, err := testhelpers.PollMessages(setup.Context, setup.DestSub, testRunValue, numMessages)

@@ -99,18 +99,22 @@ Each message is polled, published, and acknowledged sequentially.`,
 			}
 			resp, err := subscriberClient.Pull(pollCtx, req)
 			pollCancel()
+
+			// Handle the response
 			if err != nil {
-				// Exit loop if no messages are available within timeout.
-				if strings.Contains(err.Error(), "DeadlineExceeded") {
-					log.Printf("No messages received within timeout")
+				// Check for context deadline exceeded errors
+				if err == context.DeadlineExceeded ||
+					pollCtx.Err() == context.DeadlineExceeded ||
+					strings.Contains(err.Error(), "DeadlineExceeded") ||
+					strings.Contains(err.Error(), "context deadline exceeded") {
 					break
 				}
 				log.Printf("Error during message pull: %v", err)
 				continue
 			}
 
-			if len(resp.ReceivedMessages) == 0 {
-				log.Printf("No messages received within timeout")
+			// Check if we got an empty response
+			if resp == nil || len(resp.ReceivedMessages) == 0 {
 				break
 			}
 
@@ -152,6 +156,11 @@ Each message is polled, published, and acknowledged sequentially.`,
 		}
 
 		log.Printf("Move operation completed. Total messages moved: %d", processed)
+
+		// Ensure all log output is flushed before exiting
+		if f, ok := log.Writer().(*os.File); ok {
+			f.Sync()
+		}
 	},
 }
 
@@ -163,8 +172,8 @@ func init() {
 	moveCmd.Flags().String("destination-type", "", "Message destination type")
 	moveCmd.Flags().String("source", "", "Full source resource name (e.g. projects/<proj>/subscriptions/<sub>)")
 	moveCmd.Flags().String("destination", "", "Full destination resource name (e.g. projects/<proj>/topics/<topic>)")
-	moveCmd.Flags().Int("count", 0, "Number of messages to move (0 for default 3)")
-	moveCmd.Flags().Int("polling-timeout-seconds", 5, "Timeout in seconds for polling a single message")
+	moveCmd.Flags().Int("count", 0, "Number of messages to move (0 for unlimited, continues until source is exhausted)")
+	moveCmd.Flags().Int("polling-timeout-seconds", 10, "Timeout in seconds for polling a single message")
 
 	// Make flags required except for count
 	moveCmd.MarkFlagRequired("source-type")
