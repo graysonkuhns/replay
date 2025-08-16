@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -72,26 +73,34 @@ func TestDLROperation(t *testing.T) {
 		t.Fatalf("Error running CLI command: %v", err)
 	}
 
-	// Define expected output substrings.
-	expectedLines := []string{
-		fmt.Sprintf("Starting DLR review from projects/%s/subscriptions/%s", setup.ProjectID, setup.SourceSubName),
-		"",
-		"Message 1:",
-		"Data:",
-		"Test message move",
-		"Attributes: map[testRun:dlr_test]",
-		"Choose action ([m]ove / [d]iscard / [q]uit): Message 1 moved successfully",
-		"",
-		"Message 2:",
-		"Data:",
-		"Test message discard",
-		"Attributes: map[testRun:dlr_test]",
-		"Choose action ([m]ove / [d]iscard / [q]uit): Message 2 discarded (acked)",
-		"",
-		"Dead-lettered messages review completed. Total messages processed: 2",
+	// Verify the output structure without assuming message order
+	if !strings.Contains(actual, fmt.Sprintf("Starting DLR review from projects/%s/subscriptions/%s", setup.ProjectID, setup.SourceSubName)) {
+		t.Fatalf("Expected DLR start message not found in output")
 	}
 
-	testhelpers.AssertCLIOutput(t, actual, expectedLines)
+	// Count occurrences of each action result
+	movedCount := strings.Count(actual, "moved successfully")
+	discardedCount := strings.Count(actual, "discarded (acked)")
+
+	if movedCount != 1 {
+		t.Fatalf("Expected 1 'moved successfully' message, got %d", movedCount)
+	}
+	if discardedCount != 1 {
+		t.Fatalf("Expected 1 'discarded (acked)' message, got %d", discardedCount)
+	}
+
+	// Verify both test messages appear in the output (in any order)
+	if !strings.Contains(actual, "Test message move") {
+		t.Fatalf("Expected 'Test message move' not found in output")
+	}
+	if !strings.Contains(actual, "Test message discard") {
+		t.Fatalf("Expected 'Test message discard' not found in output")
+	}
+
+	// Verify final summary
+	if !strings.Contains(actual, "Dead-lettered messages review completed. Total messages processed: 2") {
+		t.Fatalf("Expected summary with 2 processed messages not found")
+	}
 
 	// Allow time for the moved message to propagate.
 	time.Sleep(20 * time.Second)

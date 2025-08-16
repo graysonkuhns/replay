@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -77,32 +78,29 @@ func TestDLRPlaintextMessageIntegrity(t *testing.T) {
 		t.Fatalf("Error running CLI command: %v", err)
 	}
 
-	// Define expected output substrings.
-	expectedLines := []string{
-		fmt.Sprintf("Starting DLR review from projects/%s/subscriptions/%s", setup.ProjectID, setup.SourceSubName),
-		"",
-		"Message 1:",
-		"Data:",
-		"DLR Plaintext Integrity Test message 1",
-		"Attributes: map[testRun:dlr_plaintext_integrity_test]",
-		"Choose action ([m]ove / [d]iscard / [q]uit): Message 1 moved successfully",
-		"",
-		"Message 2:",
-		"Data:",
-		"DLR Plaintext Integrity Test message 2",
-		"Attributes: map[testRun:dlr_plaintext_integrity_test]",
-		"Choose action ([m]ove / [d]iscard / [q]uit): Message 2 moved successfully",
-		"",
-		"Message 3:",
-		"Data:",
-		"DLR Plaintext Integrity Test message 3",
-		"Attributes: map[testRun:dlr_plaintext_integrity_test]",
-		"Choose action ([m]ove / [d]iscard / [q]uit): Message 3 moved successfully",
-		"",
-		"Dead-lettered messages review completed. Total messages processed: 3",
+	// Verify the output structure without assuming message order
+	if !strings.Contains(actual, fmt.Sprintf("Starting DLR review from projects/%s/subscriptions/%s", setup.ProjectID, setup.SourceSubName)) {
+		t.Fatalf("Expected DLR start message not found in output")
 	}
 
-	testhelpers.AssertCLIOutput(t, actual, expectedLines)
+	// Count occurrences of moved messages
+	movedCount := strings.Count(actual, "moved successfully")
+	if movedCount != numMessages {
+		t.Fatalf("Expected %d 'moved successfully' messages, got %d", numMessages, movedCount)
+	}
+
+	// Verify all test messages appear in the output (in any order)
+	for _, expectedBody := range expectedBodies {
+		if !strings.Contains(actual, expectedBody) {
+			t.Fatalf("Expected message '%s' not found in output", expectedBody)
+		}
+	}
+
+	// Verify final summary
+	expectedSummary := fmt.Sprintf("Dead-lettered messages review completed. Total messages processed: %d", numMessages)
+	if !strings.Contains(actual, expectedSummary) {
+		t.Fatalf("Expected summary '%s' not found", expectedSummary)
+	}
 	t.Logf("DLR command executed for body integrity test")
 
 	// Allow time for moved messages to propagate.
