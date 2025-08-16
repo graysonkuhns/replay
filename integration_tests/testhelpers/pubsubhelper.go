@@ -63,7 +63,8 @@ func PublishTestMessages(ctx context.Context, topic *pubsub.Topic, messages []pu
 
 		// If ordering key is provided, create a copy with the ordering key
 		if orderingKey != "" {
-			log.Printf("Publishing message %d with ordering key: %s", i+1, orderingKey)
+			// Suppress logs to avoid interfering with parallel test output
+			// log.Printf("Publishing message %d with ordering key: %s", i+1, orderingKey)
 
 			// Create a new message with the ordering key
 			msgToPublish = &pubsub.Message{
@@ -72,16 +73,18 @@ func PublishTestMessages(ctx context.Context, topic *pubsub.Topic, messages []pu
 				OrderingKey: orderingKey,
 			}
 		} else {
-			log.Printf("Publishing message %d", i+1)
+			// log.Printf("Publishing message %d", i+1)
 		}
 
 		result := topic.Publish(ctx, msgToPublish)
 		id, err := result.Get(ctx)
 		if err != nil {
+			// Keep error logs as they are important for debugging
 			log.Printf("Failed to publish message %d: %v", i+1, err)
 			return publishIDs, fmt.Errorf("failed to publish message %d: %w", i+1, err)
 		}
-		log.Printf("Published message %d with id: %s", i+1, id)
+		// Suppress success logs to avoid interfering with parallel test output
+		// log.Printf("Published message %d with id: %s", i+1, id)
 		publishIDs = append(publishIDs, id)
 	}
 	return publishIDs, nil
@@ -94,10 +97,11 @@ func PollMessages(ctx context.Context, sub *pubsub.Subscription, testRunValue st
 	defer cancel()
 	err := sub.Receive(cctx, func(ctx context.Context, m *pubsub.Message) {
 		if m.Attributes["testRun"] == testRunValue {
-			log.Printf("Received test message: %s", string(m.Data))
+			// Suppress logs to avoid interfering with parallel test output
+			// log.Printf("Received test message: %s", string(m.Data))
 			received = append(received, m)
 		} else {
-			log.Printf("Ignoring non-test message: %s", string(m.Data))
+			// log.Printf("Ignoring non-test message: %s", string(m.Data))
 		}
 		m.Ack()
 		if len(received) >= expectedCount {

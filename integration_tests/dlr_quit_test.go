@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"testing"
 	"time"
@@ -41,7 +40,8 @@ func TestDLRQuitOperation(t *testing.T) {
 		t.Fatalf("Failed to publish test messages with ordering key: %v", err)
 	}
 
-	log.Printf("Published %d messages with ordering key: %s", numMessages, orderingKey)
+	// Suppress logs to avoid interfering with parallel test output
+	// log.Printf("Published %d messages with ordering key: %s", numMessages, orderingKey)
 	time.Sleep(15 * time.Second) // Wait for messages to arrive in the subscription
 
 	// Prepare CLI arguments for the dlr command.

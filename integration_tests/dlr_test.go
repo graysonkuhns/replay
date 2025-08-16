@@ -3,7 +3,6 @@ package cmd_test
 import (
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"testing"
 	"time"
@@ -105,7 +104,8 @@ func TestDLROperation(t *testing.T) {
 	if len(received) != 1 {
 		t.Fatalf("Expected 1 moved message, got %d", len(received))
 	}
-	log.Printf("Successfully moved and received %d message", len(received))
+	// Suppress logs to avoid interfering with parallel test output
+	// log.Printf("Successfully moved and received %d message", len(received))
 
 	// Verify that the discarded message is no longer in the source subscription.
 	sourceReceived, err := testhelpers.PollMessages(setup.Context, setup.SourceSub, testRunValue, 0)

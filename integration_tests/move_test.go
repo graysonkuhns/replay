@@ -2,7 +2,6 @@ package cmd_test
 
 import (
 	"fmt"
-	"log"
 	"testing"
 	"time"
 
@@ -12,12 +11,14 @@ import (
 )
 
 func init() {
-	log.Printf("Test suite initialization: logs are enabled")
+	// Suppress logs to avoid interfering with parallel test output
+	// log.Printf("Test suite initialization: logs are enabled")
 }
 
 func TestMoveStopsWhenSourceExhausted(t *testing.T) {
 	t.Parallel()
-	log.Printf("Starting TestMoveStopsWhenSourceExhausted: verifying stop when source runs out of messages")
+	// Suppress logs to avoid interfering with parallel test output
+	// log.Printf("Starting TestMoveStopsWhenSourceExhausted: verifying stop when source runs out of messages")
 	setup := testhelpers.SetupIntegrationTest(t)
 	// For this test, we move messages from the dead letter infrastructure to the normal events infrastructure.
 
@@ -41,7 +42,7 @@ func TestMoveStopsWhenSourceExhausted(t *testing.T) {
 	}
 
 	time.Sleep(10 * time.Second)
-	log.Printf("Completed waiting for dead letter subscription to receive messages")
+	// log.Printf("Completed waiting for dead letter subscription to receive messages")
 
 	moveArgs := []string{
 		"move",
@@ -55,7 +56,7 @@ func TestMoveStopsWhenSourceExhausted(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error running CLI command: %v", err)
 	}
-	log.Printf("Move command executed")
+	// log.Printf("Move command executed")
 
 	// Define expected output lines.
 	expectedLines := []string{
@@ -82,26 +83,26 @@ func TestMoveStopsWhenSourceExhausted(t *testing.T) {
 	testhelpers.AssertCLIOutput(t, actual, expectedLines)
 
 	time.Sleep(5 * time.Second)
-	log.Printf("Waiting for messages to propagate to destination subscription")
+	// log.Printf("Waiting for messages to propagate to destination subscription")
 
-	log.Printf("Starting to receive messages from destination subscription: default-events-subscription")
+	// log.Printf("Starting to receive messages from destination subscription: default-events-subscription")
 	received, err := testhelpers.PollMessages(setup.Context, setup.DestSub, testRunValue, numMessages)
 	if err != nil {
 		t.Fatalf("Error receiving messages: %v", err)
 	}
-	log.Printf("Successfully received %d messages", len(received))
+	// log.Printf("Successfully received %d messages", len(received))
 
 	if len(received) != numMessages {
 		t.Fatalf("Expected %d moved messages, got %d", numMessages, len(received))
 	}
 
-	log.Printf("Successfully received %d messages", len(received))
+	// log.Printf("Successfully received %d messages", len(received))
 	t.Logf("Successfully moved %d messages", numMessages)
 }
 
 func TestMoveOperationWithCount(t *testing.T) {
 	t.Parallel()
-	log.Printf("Starting TestMoveOperationWithCount")
+	// log.Printf("Starting TestMoveOperationWithCount")
 	setup := testhelpers.SetupIntegrationTest(t)
 
 	numMessages := 5
@@ -125,7 +126,7 @@ func TestMoveOperationWithCount(t *testing.T) {
 	}
 
 	time.Sleep(10 * time.Second)
-	log.Printf("Completed waiting for messages to be available in the source subscription")
+	// log.Printf("Completed waiting for messages to be available in the source subscription")
 
 	moveArgs := []string{
 		"move",
@@ -140,7 +141,7 @@ func TestMoveOperationWithCount(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error running CLI command: %v", err)
 	}
-	log.Printf("Move command executed with count %d", moveCount)
+	// log.Printf("Move command executed with count %d", moveCount)
 
 	expectedLines := []string{
 		fmt.Sprintf("[TIMESTAMP] Moving messages from projects/%s/subscriptions/%s to projects/%s/topics/%s", setup.ProjectID, setup.SourceSubName, setup.ProjectID, setup.DestTopicName),
@@ -165,7 +166,7 @@ func TestMoveOperationWithCount(t *testing.T) {
 	testhelpers.AssertCLIOutput(t, actual, expectedLines)
 
 	time.Sleep(5 * time.Second)
-	log.Printf("Polling destination subscription for moved messages")
+	// log.Printf("Polling destination subscription for moved messages")
 	movedMessages, err := testhelpers.PollMessages(setup.Context, setup.DestSub, testRunValue, moveCount)
 	if err != nil {
 		t.Fatalf("Error receiving moved messages: %v", err)
@@ -174,7 +175,7 @@ func TestMoveOperationWithCount(t *testing.T) {
 		t.Fatalf("Expected %d moved messages in destination, got %d", moveCount, len(movedMessages))
 	}
 
-	log.Printf("Polling source subscription for remaining messages")
+	// log.Printf("Polling source subscription for remaining messages")
 	remainingMessages, err := testhelpers.PollMessages(setup.Context, setup.SourceSub, testRunValue, numMessages-moveCount)
 	if err != nil {
 		t.Fatalf("Error receiving remaining messages: %v", err)

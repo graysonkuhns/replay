@@ -67,13 +67,12 @@ func SetupIntegrationTest(t *testing.T) *TestSetup {
 	if err != nil {
 		t.Fatalf("Failed to create source topic %s: %v", sourceTopicName, err)
 	}
-	log.Printf("Created source topic: %s", sourceTopicName)
+	// Suppress creation logs to avoid interfering with parallel test output
 
 	destTopic, err := client.CreateTopic(ctx, destTopicName)
 	if err != nil {
 		t.Fatalf("Failed to create destination topic %s: %v", destTopicName, err)
 	}
-	log.Printf("Created destination topic: %s", destTopicName)
 
 	// Create subscriptions
 	sourceSub, err := client.CreateSubscription(ctx, sourceSubName, pubsub.SubscriptionConfig{
@@ -83,7 +82,6 @@ func SetupIntegrationTest(t *testing.T) *TestSetup {
 	if err != nil {
 		t.Fatalf("Failed to create source subscription %s: %v", sourceSubName, err)
 	}
-	log.Printf("Created source subscription: %s", sourceSubName)
 
 	destSub, err := client.CreateSubscription(ctx, destSubName, pubsub.SubscriptionConfig{
 		Topic:       destTopic,
@@ -92,7 +90,6 @@ func SetupIntegrationTest(t *testing.T) *TestSetup {
 	if err != nil {
 		t.Fatalf("Failed to create destination subscription %s: %v", destSubName, err)
 	}
-	log.Printf("Created destination subscription: %s", destSubName)
 
 	setup := &TestSetup{
 		Context:         ctx,
@@ -110,32 +107,25 @@ func SetupIntegrationTest(t *testing.T) *TestSetup {
 
 	// Setup cleanup to delete resources after test
 	t.Cleanup(func() {
-		log.Printf("Cleaning up resources for test: %s", testName)
+		// Suppress cleanup logs to avoid interfering with parallel test output
+		// Only log errors as they are important for debugging
 
 		// Delete subscriptions first
 		if err := sourceSub.Delete(ctx); err != nil {
 			log.Printf("Failed to delete source subscription %s: %v", sourceSubName, err)
-		} else {
-			log.Printf("Deleted source subscription: %s", sourceSubName)
 		}
 
 		if err := destSub.Delete(ctx); err != nil {
 			log.Printf("Failed to delete destination subscription %s: %v", destSubName, err)
-		} else {
-			log.Printf("Deleted destination subscription: %s", destSubName)
 		}
 
 		// Delete topics
 		if err := sourceTopic.Delete(ctx); err != nil {
 			log.Printf("Failed to delete source topic %s: %v", sourceTopicName, err)
-		} else {
-			log.Printf("Deleted source topic: %s", sourceTopicName)
 		}
 
 		if err := destTopic.Delete(ctx); err != nil {
 			log.Printf("Failed to delete destination topic %s: %v", destTopicName, err)
-		} else {
-			log.Printf("Deleted destination topic: %s", destTopicName)
 		}
 
 		client.Close()

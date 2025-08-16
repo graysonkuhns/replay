@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json" // added
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"time"
@@ -49,24 +48,28 @@ For moved messages, the message is republished to the destination.`,
 		// Set up subscription client
 		subParts := strings.Split(source, "/")
 		if len(subParts) < 4 {
-			log.Fatalf("Invalid subscription resource format: %s", source)
+			fmt.Printf("Error: Invalid subscription resource format: %s\n", source)
+			return
 		}
 		subProj := subParts[1]
 		subClient, err := pubsub.NewClient(ctx, subProj)
 		if err != nil {
-			log.Fatalf("Failed to create subscription client: %v", err)
+			fmt.Printf("Error: Failed to create subscription client: %v\n", err)
+			return
 		}
 		defer subClient.Close()
 
 		// Set up topic client
 		topicParts := strings.Split(destination, "/")
 		if len(topicParts) < 4 {
-			log.Fatalf("Invalid topic resource format: %s", destination)
+			fmt.Printf("Error: Invalid topic resource format: %s\n", destination)
+			return
 		}
 		topicProj := topicParts[1]
 		topicClient, err := pubsub.NewClient(ctx, topicProj)
 		if err != nil {
-			log.Fatalf("Failed to create topic client: %v", err)
+			fmt.Printf("Error: Failed to create topic client: %v\n", err)
+			return
 		}
 		defer topicClient.Close()
 		topic := topicClient.Topic(topicParts[3])
@@ -74,7 +77,8 @@ For moved messages, the message is republished to the destination.`,
 		// Create low-level Subscriber client
 		subscriberClient, err := pubsubapiv1.NewSubscriberClient(ctx)
 		if err != nil {
-			log.Fatalf("Failed to create subscriber client: %v", err)
+			fmt.Printf("Error: Failed to create subscriber client: %v\n", err)
+			return
 		}
 		defer subscriberClient.Close()
 
@@ -84,7 +88,6 @@ For moved messages, the message is republished to the destination.`,
 		// Loop to pull messages interactively
 		for {
 			msgNum := processed + 1
-			log.Printf("Polling for message %d...", msgNum)
 			pollCtx, pollCancel := context.WithTimeout(ctx, time.Duration(pollTimeoutSec)*time.Second)
 			req := &pubsubpb.PullRequest{
 				Subscription: source,
@@ -94,14 +97,11 @@ For moved messages, the message is republished to the destination.`,
 			pollCancel()
 			if err != nil {
 				if strings.Contains(err.Error(), "DeadlineExceeded") {
-					log.Printf("No messages received within timeout")
 					break
 				}
-				log.Printf("Error during message pull: %v", err)
 				continue
 			}
 			if len(resp.ReceivedMessages) == 0 {
-				log.Printf("No messages received")
 				break
 			}
 			receivedMsg := resp.ReceivedMessages[0]
@@ -137,17 +137,15 @@ For moved messages, the message is republished to the destination.`,
 			}
 
 			if input == "m" {
-				log.Printf("Publishing message %d...", msgNum)
 				result := topic.Publish(ctx, &pubsub.Message{
 					Data:       receivedMsg.Message.Data,
 					Attributes: receivedMsg.Message.Attributes,
 				})
 				_, err := result.Get(ctx)
 				if err != nil {
-					log.Printf("Failed to publish message %d: %v", msgNum, err)
+					fmt.Printf("Failed to move message %d\n", msgNum)
 					continue
 				}
-				log.Printf("Published message %d successfully", msgNum)
 				fmt.Printf("Message %d moved successfully\n", msgNum)
 			} else if input == "d" {
 				fmt.Printf("Message %d discarded (acked)\n", msgNum)
@@ -155,7 +153,6 @@ For moved messages, the message is republished to the destination.`,
 				fmt.Printf("Quitting review...\n")
 				// When quitting, do not acknowledge the message
 				// We need to explicitly log this so the test can verify the behavior
-				log.Printf("Leaving message %d unacknowledged in the subscription", msgNum)
 				break
 			}
 
@@ -168,9 +165,7 @@ For moved messages, the message is republished to the destination.`,
 					AckIds:       []string{receivedMsg.AckId},
 				}
 				if err := subscriberClient.Acknowledge(ctx, ackReq); err != nil {
-					log.Printf("Failed to acknowledge message %d: %v", msgNum, err)
-				} else {
-					log.Printf("Acknowledged message %d", msgNum)
+					// Failed to acknowledge, but continue processing
 				}
 
 				processed++
