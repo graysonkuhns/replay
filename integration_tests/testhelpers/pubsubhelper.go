@@ -22,7 +22,7 @@ func PurgeSubscription(ctx context.Context, sub *pubsub.Subscription) error {
 	defer subscriberClient.Close()
 
 	for {
-		pollCtx, pollCancel := context.WithTimeout(ctx, 5*time.Second)
+		pollCtx, pollCancel := context.WithTimeout(ctx, 10*time.Second)
 		req := &pubsubpb.PullRequest{
 			Subscription: subResource,
 			MaxMessages:  1,
@@ -93,7 +93,7 @@ func PublishTestMessages(ctx context.Context, topic *pubsub.Topic, messages []pu
 // PollMessages polls messages from a subscription and verifies the expected count.
 func PollMessages(ctx context.Context, sub *pubsub.Subscription, testRunValue string, expectedCount int) ([]*pubsub.Message, error) {
 	var received []*pubsub.Message
-	cctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	cctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 	err := sub.Receive(cctx, func(ctx context.Context, m *pubsub.Message) {
 		if m.Attributes["testRun"] == testRunValue {

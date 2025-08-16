@@ -42,7 +42,7 @@ func TestDLRInvalidInputHandling(t *testing.T) {
 
 	// Suppress logs to avoid interfering with parallel test output
 	// log.Printf("Published %d messages", numMessages)
-	time.Sleep(15 * time.Second) // Wait for messages to arrive in the subscription
+	time.Sleep(30 * time.Second) // Wait for messages to arrive in the subscription
 
 	// Prepare CLI arguments for the dlr command.
 	dlrArgs := []string{
@@ -116,7 +116,7 @@ func TestDLRInvalidInputHandling(t *testing.T) {
 	t.Logf("DLR command executed for invalid input handling test")
 
 	// Allow time for moved messages to propagate.
-	time.Sleep(5 * time.Second)
+	time.Sleep(20 * time.Second)
 
 	// Poll the destination subscription for moved messages.
 	// We expect exactly 1 message to be moved (message 1).
@@ -136,11 +136,11 @@ func TestDLRInvalidInputHandling(t *testing.T) {
 
 	// Verify that no messages remain in the source subscription by using a custom checking approach
 	// instead of using PollMessages which expects a specific number of messages
-	time.Sleep(5 * time.Second)
+	time.Sleep(20 * time.Second)
 
 	// Create a custom receiver function to check for any messages
 	var foundMessage bool
-	cctx, cancel := context.WithTimeout(setup.Context, 5*time.Second)
+	cctx, cancel := context.WithTimeout(setup.Context, 10*time.Second)
 	defer cancel()
 
 	// Use Receive directly instead of PollMessages

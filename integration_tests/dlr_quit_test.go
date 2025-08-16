@@ -42,7 +42,7 @@ func TestDLRQuitOperation(t *testing.T) {
 
 	// Suppress logs to avoid interfering with parallel test output
 	// log.Printf("Published %d messages with ordering key: %s", numMessages, orderingKey)
-	time.Sleep(15 * time.Second) // Wait for messages to arrive in the subscription
+	time.Sleep(30 * time.Second) // Wait for messages to arrive in the subscription
 
 	// Prepare CLI arguments for the dlr command.
 	dlrArgs := []string{
@@ -112,7 +112,7 @@ func TestDLRQuitOperation(t *testing.T) {
 	t.Logf("DLR command executed for quit operation test")
 
 	// Allow time for moved messages to propagate.
-	time.Sleep(5 * time.Second)
+	time.Sleep(20 * time.Second)
 
 	// Poll the destination subscription for moved messages.
 	// We expect exactly 2 messages to be moved.
@@ -143,13 +143,13 @@ func TestDLRQuitOperation(t *testing.T) {
 		}
 	}
 
-	// Wait for ack deadline to expire (10 seconds) before checking the source subscription
-	time.Sleep(25 * time.Second)
+	// Wait for ack deadline to expire (60 seconds) before checking the source subscription
+	time.Sleep(70 * time.Second)
 
 	// Verify that one message remains in the source subscription (message 4)
 	// We expect exactly 1 message to remain in the source subscription after processing.
 	// Use a longer timeout context for this specific polling operation
-	pollCtx, pollCancel := context.WithTimeout(setup.Context, 30*time.Second)
+	pollCtx, pollCancel := context.WithTimeout(setup.Context, 60*time.Second)
 	defer pollCancel()
 	sourceReceived, err := testhelpers.PollMessages(pollCtx, setup.SourceSub, testRunValue, 1)
 

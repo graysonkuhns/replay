@@ -105,7 +105,7 @@ func TestDLRJSONMessageIntegrity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to publish JSON test messages: %v", err)
 	}
-	time.Sleep(15 * time.Second) // Wait for messages to arrive in the subscription
+	time.Sleep(30 * time.Second) // Wait for messages to arrive in the subscription
 
 	// Prepare CLI arguments for the dlr command.
 	dlrArgs := []string{
@@ -146,7 +146,7 @@ func TestDLRJSONMessageIntegrity(t *testing.T) {
 	t.Logf("DLR command executed for JSON integrity test")
 
 	// Allow time for moved messages to propagate.
-	time.Sleep(5 * time.Second)
+	time.Sleep(20 * time.Second)
 
 	// Poll the destination subscription for moved messages.
 	received, err := testhelpers.PollMessages(setup.Context, setup.DestSub, testRunValue, numMessages)
