@@ -107,7 +107,6 @@ Each message is polled, published, and acknowledged sequentially.`,
 					pollCtx.Err() == context.DeadlineExceeded ||
 					strings.Contains(err.Error(), "DeadlineExceeded") ||
 					strings.Contains(err.Error(), "context deadline exceeded") {
-					log.Printf("No messages received within timeout")
 					break
 				}
 				log.Printf("Error during message pull: %v", err)
@@ -116,7 +115,6 @@ Each message is polled, published, and acknowledged sequentially.`,
 
 			// Check if we got an empty response
 			if resp == nil || len(resp.ReceivedMessages) == 0 {
-				log.Printf("No messages received within timeout")
 				break
 			}
 

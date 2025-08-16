@@ -76,7 +76,6 @@ func TestMoveStopsWhenSourceExhausted(t *testing.T) {
 		"[TIMESTAMP] Published message 3 successfully",
 		"[TIMESTAMP] Acked message 3",
 		"[TIMESTAMP] Processed message 3",
-		"[TIMESTAMP] No messages received within timeout",
 		fmt.Sprintf("[TIMESTAMP] Move operation completed. Total messages moved: %d", numMessages),
 	}
 
