@@ -13,9 +13,9 @@ import (
 	"time"
 
 	"cloud.google.com/go/pubsub"
-	pubsubapiv1 "cloud.google.com/go/pubsub/apiv1"
+	pubsubapiv1 "cloud.google.com/go/pubsub/v2/apiv1"
+	pubsubpb "cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"
 	"github.com/spf13/cobra"
-	pubsubpb "google.golang.org/genproto/googleapis/pubsub/v1"
 )
 
 // dlrCmd represents the dlr command
@@ -75,7 +75,7 @@ For moved messages, the message is republished to the destination.`,
 		topic := topicClient.Topic(topicParts[3])
 
 		// Create low-level Subscriber client
-		subscriberClient, err := pubsubapiv1.NewSubscriberClient(ctx)
+		subscriberClient, err := pubsubapiv1.NewSubscriptionAdminClient(ctx)
 		if err != nil {
 			fmt.Printf("Error: Failed to create subscriber client: %v\n", err)
 			return

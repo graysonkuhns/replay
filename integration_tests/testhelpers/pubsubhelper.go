@@ -8,14 +8,14 @@ import (
 	"time"
 
 	"cloud.google.com/go/pubsub"
-	pubsubapiv1 "cloud.google.com/go/pubsub/apiv1"
-	pubsubpb "cloud.google.com/go/pubsub/apiv1/pubsubpb"
+	pubsubapiv1 "cloud.google.com/go/pubsub/v2/apiv1"
+	pubsubpb "cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"
 )
 
 // PurgeSubscription purges messages from the given Pub/Sub subscription.
 func PurgeSubscription(ctx context.Context, sub *pubsub.Subscription) error {
 	subResource := sub.String() // assumes full resource name (e.g. projects/<proj>/subscriptions/<sub>)
-	subscriberClient, err := pubsubapiv1.NewSubscriberClient(ctx)
+	subscriberClient, err := pubsubapiv1.NewSubscriptionAdminClient(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create subscriber client: %w", err)
 	}
