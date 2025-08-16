@@ -13,6 +13,12 @@ func AssertCLIOutput(t *testing.T, actual string, expectedLines []string) {
 		actualLines := strings.Split(strings.TrimSpace(actual), "\n")
 		expectedStr := strings.Join(expectedLines, "\n")
 		actualStr := strings.Join(actualLines, "\n")
-		t.Fatalf("CLI output mismatch.\nExpected output:\n%s\nActual output:\n%s", expectedStr, actualStr)
+		t.Fatalf(
+			"CLI output mismatch.\n"+
+				"===== Start EXPECTED output =====\n%s\n===== End EXPECTED output =====\n"+
+				"===== Start ACTUAL output =====\n%s\n===== End ACTUAL output =====\n",
+			expectedStr,
+			actualStr,
+		)
 	}
 }
