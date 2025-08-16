@@ -159,7 +159,7 @@ Each message is polled, published, and acknowledged sequentially.`,
 
 		// Ensure all log output is flushed before exiting
 		if f, ok := log.Writer().(*os.File); ok {
-			f.Sync()
+			_ = f.Sync()
 		}
 	},
 }
@@ -176,8 +176,8 @@ func init() {
 	moveCmd.Flags().Int("polling-timeout-seconds", 10, "Timeout in seconds for polling a single message")
 
 	// Make flags required except for count
-	moveCmd.MarkFlagRequired("source-type")
-	moveCmd.MarkFlagRequired("destination-type")
-	moveCmd.MarkFlagRequired("source")
-	moveCmd.MarkFlagRequired("destination")
+	_ = moveCmd.MarkFlagRequired("source-type")
+	_ = moveCmd.MarkFlagRequired("destination-type")
+	_ = moveCmd.MarkFlagRequired("source")
+	_ = moveCmd.MarkFlagRequired("destination")
 }

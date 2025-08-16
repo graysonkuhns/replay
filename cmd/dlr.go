@@ -166,6 +166,7 @@ For moved messages, the message is republished to the destination.`,
 				}
 				if err := subscriberClient.Acknowledge(ctx, ackReq); err != nil {
 					// Failed to acknowledge, but continue processing
+					fmt.Printf("Warning: failed to acknowledge message %d: %v\n", msgNum, err)
 				}
 
 				processed++
@@ -190,8 +191,8 @@ func init() {
 	dlrCmd.Flags().Int("count", 0, "Number of messages to process (0 for all messages)")
 	dlrCmd.Flags().Bool("pretty-json", false, "Display message data as pretty JSON")
 	dlrCmd.Flags().Int("polling-timeout-seconds", 10, "Timeout in seconds for polling a single message")
-	dlrCmd.MarkFlagRequired("source-type")
-	dlrCmd.MarkFlagRequired("destination-type")
-	dlrCmd.MarkFlagRequired("source")
-	dlrCmd.MarkFlagRequired("destination")
+	_ = dlrCmd.MarkFlagRequired("source-type")
+	_ = dlrCmd.MarkFlagRequired("destination-type")
+	_ = dlrCmd.MarkFlagRequired("source")
+	_ = dlrCmd.MarkFlagRequired("destination")
 }
