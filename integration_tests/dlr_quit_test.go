@@ -20,6 +20,11 @@ func TestDLRQuitOperation(t *testing.T) {
 	setup := testhelpers.SetupIntegrationTest(t)
 	testRunValue := "dlr_quit_test"
 
+	// Purge any existing messages from the source subscription to ensure test isolation
+	if err := testhelpers.PurgeSubscription(setup.Context, setup.SourceSub); err != nil {
+		t.Fatalf("Failed to purge source subscription: %v", err)
+	}
+
 	// Prepare 4 messages with unique body content.
 	numMessages := 4
 	sourceTopic := setup.GetSourceTopic()
@@ -89,8 +94,21 @@ func TestDLRQuitOperation(t *testing.T) {
 	discardedCount := strings.Count(actual, "discarded (acked)")
 	quitCount := strings.Count(actual, "Quitting review...")
 
+	// Log the actual output for debugging
+	t.Logf("DLR output contained %d 'moved successfully', %d 'discarded (acked)', %d 'Quitting review...' messages",
+		movedCount, discardedCount, quitCount)
+
+	// Count how many of our test messages appear in the output
+	testMessageCount := 0
+	for i := 1; i <= 4; i++ {
+		if strings.Contains(actual, fmt.Sprintf("DLR Quit Test message %d", i)) {
+			testMessageCount++
+		}
+	}
+	t.Logf("Found %d test messages in output", testMessageCount)
+
 	if movedCount != 2 {
-		t.Fatalf("Expected 2 'moved successfully' messages, got %d", movedCount)
+		t.Fatalf("Expected 2 'moved successfully' messages, got %d. Full output:\n%s", movedCount, actual)
 	}
 	if discardedCount != 1 {
 		t.Fatalf("Expected 1 'discarded (acked)' message, got %d", discardedCount)
