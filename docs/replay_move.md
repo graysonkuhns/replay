@@ -18,7 +18,7 @@ replay move [flags]
       --destination string            Full destination resource name (e.g. projects/<proj>/topics/<topic>)
       --destination-type string       Message destination type
   -h, --help                          help for move
-      --polling-timeout-seconds int   Timeout in seconds for polling a single message (default 5)
+      --polling-timeout-seconds int   Timeout in seconds for polling a single message (default 10)
       --source string                 Full source resource name (e.g. projects/<proj>/subscriptions/<sub>)
       --source-type string            Message source type
 ```
