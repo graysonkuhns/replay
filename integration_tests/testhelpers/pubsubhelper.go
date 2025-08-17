@@ -14,13 +14,14 @@ import (
 // PurgeSubscription purges messages from the given Pub/Sub subscription.
 func PurgeSubscription(ctx context.Context, client *pubsub.Client, subscriptionName string) error {
 	subscriberClient := client.SubscriptionAdminClient
-	defer subscriberClient.Close()
+	// Don't close the client as it's shared across tests
 
+	// Pull and ack messages in batches for better performance
 	for {
-		pollCtx, pollCancel := context.WithTimeout(ctx, 10*time.Second)
+		pollCtx, pollCancel := context.WithTimeout(ctx, 5*time.Second)
 		req := &pubsubpb.PullRequest{
 			Subscription: subscriptionName,
-			MaxMessages:  1,
+			MaxMessages:  100, // Pull up to 100 messages at a time
 		}
 		resp, err := subscriberClient.Pull(pollCtx, req)
 		pollCancel()
@@ -34,12 +35,20 @@ func PurgeSubscription(ctx context.Context, client *pubsub.Client, subscriptionN
 		if len(resp.ReceivedMessages) == 0 {
 			break
 		}
+
+		// Collect all ack IDs
+		var ackIds []string
+		for _, msg := range resp.ReceivedMessages {
+			ackIds = append(ackIds, msg.AckId)
+		}
+
+		// Ack all messages at once
 		ackReq := &pubsubpb.AcknowledgeRequest{
 			Subscription: subscriptionName,
-			AckIds:       []string{resp.ReceivedMessages[0].AckId},
+			AckIds:       ackIds,
 		}
 		if err := subscriberClient.Acknowledge(ctx, ackReq); err != nil {
-			return fmt.Errorf("failed to acknowledge message: %w", err)
+			return fmt.Errorf("failed to acknowledge messages: %w", err)
 		}
 	}
 	return nil
@@ -50,6 +59,10 @@ func PublishTestMessages(ctx context.Context, client *pubsub.Client, topicName s
 
 	// Create publisher for the topic
 	publisher := client.Publisher(topicName)
+	// Only enable message ordering if an ordering key is provided
+	if orderingKey != "" {
+		publisher.EnableMessageOrdering = true
+	}
 	defer publisher.Stop()
 
 	for i, msg := range messages {
