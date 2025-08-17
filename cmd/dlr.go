@@ -69,7 +69,7 @@ func (h *DLRHandler) HandleMessage(ctx context.Context, message *Message, msgNum
 		case "q":
 			// Quit without acknowledging
 			fmt.Fprintln(h.output, "Quitting review...")
-			return false, fmt.Errorf("quit")
+			return false, ErrQuit
 
 		default:
 			fmt.Fprintln(h.output, "Invalid input. Please enter 'm', 'd', or 'q'.")
