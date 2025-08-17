@@ -76,7 +76,7 @@ func TestDLRWithPrettyJSON(t *testing.T) {
 		"Message 1:",
 		"Data (pretty JSON):",
 		string(prettyJSON),
-		fmt.Sprintf("Attributes: map[testRun:%s]", baseTest.TestRunID),
+		fmt.Sprintf("Attributes: map[parallelIndex:%d testName:%s testRun:%s]", baseTest.TestContext.ParallelIndex, t.Name(), baseTest.TestRunID),
 		"Choose action ([m]ove / [d]iscard / [q]uit): Message 1 moved successfully",
 		"",
 		"Dead-lettered messages review completed. Total messages processed: 1",
