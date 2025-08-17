@@ -52,12 +52,6 @@ func PublishTestMessages(ctx context.Context, client *pubsub.Client, topicName s
 	publisher := client.Publisher(topicName)
 	defer publisher.Stop()
 
-	// If ordering key is provided, enable message ordering on the publisher
-	if orderingKey != "" {
-		// In v2, message ordering is configured differently
-		// We'll set it through publish settings if needed
-	}
-
 	for i, msg := range messages {
 		msgToPublish := &msg // Use the original message by default
 
