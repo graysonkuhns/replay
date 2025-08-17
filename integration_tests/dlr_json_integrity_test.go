@@ -9,8 +9,6 @@ import (
 	"time"
 
 	"replay/integration_tests/testhelpers"
-
-	"cloud.google.com/go/pubsub"
 )
 
 func TestDLRJSONMessageIntegrity(t *testing.T) {
@@ -18,10 +16,13 @@ func TestDLRJSONMessageIntegrity(t *testing.T) {
 	setup := testhelpers.SetupIntegrationTest(t)
 	testRunValue := "dlr_json_integrity_test"
 
-	// Prepare JSON messages with various complexity levels
+	// Prepare JSON messages with various complexity levels using the builder.
 	numMessages := 3
 	sourceTopic := setup.GetSourceTopic()
-	var messages []pubsub.Message
+
+	builder := testhelpers.NewTestMessageBuilder().
+		WithAttributes(map[string]string{"testRun": testRunValue})
+
 	var expectedJSONs []string
 
 	// Use a fixed timestamp for deterministic testing
@@ -34,6 +35,9 @@ func TestDLRJSONMessageIntegrity(t *testing.T) {
 		"timestamp": fixedTimestamp,
 		"isValid":   true,
 	}
+	builder.WithAttribute("contentType", "application/json").
+		WithAttribute("messageIndex", "1").
+		WithJSONMessage(simpleJSON)
 	simpleJSONBytes, err := json.Marshal(simpleJSON)
 	if err != nil {
 		t.Fatalf("Failed to marshal simple JSON: %v", err)
@@ -52,6 +56,8 @@ func TestDLRJSONMessageIntegrity(t *testing.T) {
 		},
 		"counts": []int{1, 2, 3, 4, 5},
 	}
+	builder.WithAttribute("messageIndex", "2").
+		WithJSONMessage(nestedJSON)
 	nestedJSONBytes, err := json.Marshal(nestedJSON)
 	if err != nil {
 		t.Fatalf("Failed to marshal nested JSON: %v", err)
@@ -83,23 +89,15 @@ func TestDLRJSONMessageIntegrity(t *testing.T) {
 			"emptyObject": map[string]string{},
 		},
 	}
+	builder.WithAttribute("messageIndex", "3").
+		WithJSONMessage(complexJSON)
 	complexJSONBytes, err := json.Marshal(complexJSON)
 	if err != nil {
 		t.Fatalf("Failed to marshal complex JSON: %v", err)
 	}
 	expectedJSONs = append(expectedJSONs, string(complexJSONBytes))
 
-	// Create pubsub messages with JSON payloads
-	for i, jsonStr := range expectedJSONs {
-		messages = append(messages, pubsub.Message{
-			Data: []byte(jsonStr),
-			Attributes: map[string]string{
-				"testRun":      testRunValue,
-				"contentType":  "application/json",
-				"messageIndex": fmt.Sprintf("%d", i+1),
-			},
-		})
-	}
+	messages := builder.Build()
 
 	_, err = testhelpers.PublishTestMessages(setup.Context, sourceTopic, messages, "json-test-ordering-key")
 	if err != nil {
