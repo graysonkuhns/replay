@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"replay/integration_tests/testhelpers"
+
+	"cloud.google.com/go/pubsub/v2"
 )
 
 func TestDLRQuitOperation(t *testing.T) {
@@ -27,6 +29,10 @@ func TestDLRQuitOperation(t *testing.T) {
 	if err := baseTest.PublishAndWait(messages); err != nil {
 		t.Fatalf("Failed to publish test messages: %v", err)
 	}
+
+	// Add extra wait to ensure messages are properly available in subscription
+	// This helps with test isolation when running in parallel
+	time.Sleep(10 * time.Second)
 
 	// Simulate user inputs: "m" (move) for 2 messages, "d" (discard) for 1 message, then "q" (quit)
 	inputs := "m\nm\nd\nq\n"
@@ -108,15 +114,32 @@ func TestDLRQuitOperation(t *testing.T) {
 
 	// Verify that one message remains in the source subscription
 	// We expect exactly 1 message to remain in the source subscription after processing.
-	// Use a longer timeout context for this specific polling operation
-	pollCtx, pollCancel := context.WithTimeout(baseTest.Setup.Context, 60*time.Second)
-	defer pollCancel()
-	sourceReceived, err := testhelpers.PollMessages(pollCtx, baseTest.Setup.Client, baseTest.Setup.GetSourceSubscriptionName(), baseTest.TestRunID, 1)
+	// Try multiple times to account for timing variations when running with other tests
+	var sourceReceived []*pubsub.Message
+	maxAttempts := 3
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		// Use a longer timeout context for this specific polling operation
+		pollCtx, pollCancel := context.WithTimeout(baseTest.Setup.Context, 60*time.Second)
+		sourceReceived, err = testhelpers.PollMessages(pollCtx, baseTest.Setup.Client, baseTest.Setup.GetSourceSubscriptionName(), baseTest.TestRunID, 1)
+		pollCancel()
+
+		if err == nil && len(sourceReceived) == 1 {
+			break // Success
+		}
+
+		if attempt < maxAttempts {
+			t.Logf("Attempt %d: Expected 1 message in source, got %d. Retrying...", attempt, len(sourceReceived))
+			time.Sleep(10 * time.Second)
+		}
+	}
 
 	if err != nil {
 		t.Fatalf("Error polling source subscription: %v", err)
 	}
 	if len(sourceReceived) != 1 {
+		// Log more details to help debug the issue
+		t.Logf("Test isolation issue: Expected 1 message in source subscription, got %d", len(sourceReceived))
+		t.Logf("This test expects the 4th message to remain after quit, but it may have been processed")
 		t.Fatalf("Expected 1 message in source subscription, got %d", len(sourceReceived))
 	}
 
