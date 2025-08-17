@@ -14,8 +14,7 @@ import (
 func TestDLRWithPrettyJSON(t *testing.T) {
 	t.Parallel()
 	// Set up context and PubSub client.
-	setup := testhelpers.SetupIntegrationTest(t)
-	testRunValue := "dlr_pretty_json_test"
+	baseTest := testhelpers.NewBaseIntegrationTest(t, "dlr_pretty_json_test")
 
 	// Create a JSON message for testing
 	jsonData := map[string]interface{}{
@@ -43,53 +42,41 @@ func TestDLRWithPrettyJSON(t *testing.T) {
 	}
 
 	// Publish the test message to the dead-letter topic
-	sourceTopicName := setup.GetSourceTopicName()
 	message := pubsub.Message{
 		Data: jsonBytes,
 		Attributes: map[string]string{
-			"testRun": testRunValue,
+			"testRun": baseTest.TestRunID,
 		},
 	}
 
-	_, err = testhelpers.PublishTestMessages(setup.Context, setup.Client, sourceTopicName, []pubsub.Message{message}, "test-ordering-key")
-	if err != nil {
+	if err := baseTest.PublishAndWait([]pubsub.Message{message}); err != nil {
 		t.Fatalf("Failed to publish test message: %v", err)
 	}
-
-	// Wait for the message to propagate to the dead-letter subscription.
-	time.Sleep(30 * time.Second)
 
 	// Prepare CLI arguments for the dlr command with pretty-json flag.
 	dlrArgs := []string{
 		"dlr",
 		"--source-type", "GCP_PUBSUB_SUBSCRIPTION",
 		"--destination-type", "GCP_PUBSUB_TOPIC",
-		"--source", setup.GetSourceSubscriptionName(),
-		"--destination", setup.GetDestTopicName(),
+		"--source", baseTest.Setup.GetSourceSubscriptionName(),
+		"--destination", baseTest.Setup.GetDestTopicName(),
 		"--pretty-json", // Enable pretty JSON output
 	}
 
-	// Simulate user input: "m" for moving the message
-	simulator, err := testhelpers.NewStdinSimulator("m\n")
-	if err != nil {
-		t.Fatalf("Failed to create stdin simulator: %v", err)
-	}
-	defer simulator.Cleanup()
-
-	// Run the dlr command.
-	actual, err := testhelpers.RunCLICommand(dlrArgs)
+	// Run the dlr command with custom args.
+	actual, err := baseTest.RunDLRCommandWithArgs(dlrArgs, "m\n")
 	if err != nil {
 		t.Fatalf("Error running CLI command: %v", err)
 	}
 
 	// Define expected output substrings.
 	expectedLines := []string{
-		fmt.Sprintf("Starting DLR review from %s", setup.GetSourceSubscriptionName()),
+		fmt.Sprintf("Starting DLR review from %s", baseTest.Setup.GetSourceSubscriptionName()),
 		"",
 		"Message 1:",
 		"Data (pretty JSON):",
 		string(prettyJSON),
-		fmt.Sprintf("Attributes: map[testRun:%s]", testRunValue),
+		fmt.Sprintf("Attributes: map[testRun:%s]", baseTest.TestRunID),
 		"Choose action ([m]ove / [d]iscard / [q]uit): Message 1 moved successfully",
 		"",
 		"Dead-lettered messages review completed. Total messages processed: 1",

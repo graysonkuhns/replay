@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"strings"
 	"testing"
-	"time"
 
 	"replay/integration_tests/testhelpers"
 
@@ -15,17 +15,15 @@ import (
 func TestDLRBinaryEdgeCases(t *testing.T) {
 	t.Parallel()
 	// Test specific binary edge cases that might cause issues in message processing
-	setup := testhelpers.SetupIntegrationTest(t)
-	testRunValue := "dlr_binary_edge_cases_test"
+	baseTest := testhelpers.NewBaseIntegrationTest(t, "dlr_binary_edge_cases_test")
 
 	// Purge any existing messages from the source subscription to ensure test isolation
-	if err := testhelpers.PurgeSubscription(setup.Context, setup.Client, setup.GetSourceSubscriptionName()); err != nil {
+	if err := testhelpers.PurgeSubscription(baseTest.Setup.Context, baseTest.Setup.Client, baseTest.Setup.GetSourceSubscriptionName()); err != nil {
 		t.Fatalf("Failed to purge source subscription: %v", err)
 	}
 
 	// Prepare edge case binary messages
 	numMessages := 4
-	sourceTopicName := setup.GetSourceTopicName()
 	var messages []pubsub.Message
 	var expectedBinaryData [][]byte
 	var descriptions []string
@@ -65,7 +63,7 @@ func TestDLRBinaryEdgeCases(t *testing.T) {
 		messages = append(messages, pubsub.Message{
 			Data: binaryData,
 			Attributes: map[string]string{
-				"testRun":      testRunValue,
+				"testRun":      baseTest.TestRunID,
 				"contentType":  "application/octet-stream",
 				"messageIndex": fmt.Sprintf("%d", i+1),
 				"sizeBytes":    fmt.Sprintf("%d", len(binaryData)),
@@ -75,35 +73,15 @@ func TestDLRBinaryEdgeCases(t *testing.T) {
 		})
 	}
 
-	_, err := testhelpers.PublishTestMessages(setup.Context, setup.Client, sourceTopicName, messages, "binary-edge-test-key")
-	if err != nil {
+	if err := baseTest.PublishAndWait(messages); err != nil {
 		t.Fatalf("Failed to publish binary test messages: %v", err)
-	}
-	time.Sleep(30 * time.Second) // Wait for messages to arrive in the subscription
-
-	// Prepare CLI arguments for the dlr command.
-	dlrArgs := []string{
-		"dlr",
-		"--source-type", "GCP_PUBSUB_SUBSCRIPTION",
-		"--destination-type", "GCP_PUBSUB_TOPIC",
-		"--source", setup.GetSourceSubscriptionName(),
-		"--destination", setup.GetDestTopicName(),
 	}
 
 	// Simulate user inputs: "m" (move) for all messages
-	var inputs string
-	for i := 0; i < numMessages; i++ {
-		inputs += "m\n"
-	}
-
-	simulator, err := testhelpers.NewStdinSimulator(inputs)
-	if err != nil {
-		t.Fatalf("Failed to create stdin simulator: %v", err)
-	}
-	defer simulator.Cleanup()
+	inputs := strings.Repeat("m\n", numMessages)
 
 	// Run the dlr command.
-	_, err = testhelpers.RunCLICommand(dlrArgs)
+	_, err := baseTest.RunDLRCommand(inputs)
 	if err != nil {
 		t.Fatalf("Error running CLI command: %v", err)
 	}
@@ -111,26 +89,21 @@ func TestDLRBinaryEdgeCases(t *testing.T) {
 	t.Logf("DLR command executed for binary edge cases test")
 
 	// Allow time for moved messages to propagate.
-	time.Sleep(40 * time.Second)
+	baseTest.WaitForMessagePropagation()
+	// Add extra wait for edge cases
+	baseTest.WaitForMessagePropagation()
 
 	// Poll the destination subscription for moved messages.
-	received, err := testhelpers.PollMessages(setup.Context, setup.Client, setup.GetDestSubscriptionName(), testRunValue, numMessages)
+	received, err := baseTest.GetMessagesFromDestination(numMessages)
 	if err != nil {
 		t.Logf("Error receiving messages from destination: %v", err)
 		// Log which messages were received
-		t.Logf("Received %d messages:", len(received))
-		for _, msg := range received {
+		partialReceived, _ := baseTest.GetMessagesFromDestination(0)
+		t.Logf("Received %d messages:", len(partialReceived))
+		for _, msg := range partialReceived {
 			t.Logf("  - Description: %s, Size: %d bytes", msg.Attributes["description"], len(msg.Data))
 		}
 		t.Fatalf("Error receiving messages from destination: %v", err)
-	}
-	if len(received) != numMessages {
-		// Log which messages were received
-		t.Logf("Expected %d messages, but got %d", numMessages, len(received))
-		for _, msg := range received {
-			t.Logf("  - Description: %s, Size: %d bytes", msg.Attributes["description"], len(msg.Data))
-		}
-		t.Fatalf("Expected %d messages in destination, got %d", numMessages, len(received))
 	}
 
 	// Verify that each binary edge case maintains its data integrity
@@ -156,12 +129,8 @@ func TestDLRBinaryEdgeCases(t *testing.T) {
 	}
 
 	// Verify that the source subscription is empty (all messages were moved)
-	sourceReceived, err := testhelpers.PollMessages(setup.Context, setup.Client, setup.GetSourceSubscriptionName(), testRunValue, 0)
-	if err != nil {
-		t.Fatalf("Error polling source subscription: %v", err)
-	}
-	if len(sourceReceived) != 0 {
-		t.Fatalf("Expected 0 messages in source subscription, got %d", len(sourceReceived))
+	if err := baseTest.VerifyMessagesInSource(0); err != nil {
+		t.Fatalf("%v", err)
 	}
 
 	t.Logf("Binary edge cases verified for all %d messages moved using DLR operation", numMessages)

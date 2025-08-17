@@ -15,61 +15,30 @@ import (
 func TestDLRInvalidInputHandling(t *testing.T) {
 	t.Parallel()
 	// Test to verify that the DLR operation correctly handles invalid input by asking again
-	setup := testhelpers.SetupIntegrationTest(t)
-	testRunValue := "dlr_invalid_input_test"
+	baseTest := testhelpers.NewBaseIntegrationTest(t, "dlr_invalid_input_test")
 
 	// Prepare 2 messages with unique body content.
 	numMessages := 2
-	sourceTopicName := setup.GetSourceTopicName()
-	var messages []pubsub.Message
+	messages := baseTest.CreateTestMessages(numMessages, "DLR Invalid Input Test message")
 
-	for i := 1; i <= numMessages; i++ {
-		body := fmt.Sprintf("DLR Invalid Input Test message %d", i)
-		messages = append(messages, pubsub.Message{
-			Data: []byte(body),
-			Attributes: map[string]string{
-				"testRun": testRunValue,
-			},
-		})
-	}
-
-	_, err := testhelpers.PublishTestMessages(setup.Context, setup.Client, sourceTopicName, messages, "")
-	if err != nil {
+	if err := baseTest.PublishAndWait(messages); err != nil {
 		t.Fatalf("Failed to publish test messages: %v", err)
-	}
-
-	// Suppress logs to avoid interfering with parallel test output
-	// log.Printf("Published %d messages", numMessages)
-	time.Sleep(30 * time.Second) // Wait for messages to arrive in the subscription
-
-	// Prepare CLI arguments for the dlr command.
-	dlrArgs := []string{
-		"dlr",
-		"--source-type", "GCP_PUBSUB_SUBSCRIPTION",
-		"--destination-type", "GCP_PUBSUB_TOPIC",
-		"--source", setup.GetSourceSubscriptionName(),
-		"--destination", setup.GetDestTopicName(),
 	}
 
 	// Simulate user inputs:
 	// For message 1: invalid input "x", then "m" (move)
 	// For message 2: invalid inputs "invalid", "123", then "d" (discard)
 	inputs := "x\nm\ninvalid\n123\nd\n"
-	simulator, err := testhelpers.NewStdinSimulator(inputs)
-	if err != nil {
-		t.Fatalf("Failed to create stdin simulator: %v", err)
-	}
-	defer simulator.Cleanup()
 
 	// Run the dlr command.
-	actual, err := testhelpers.RunCLICommand(dlrArgs)
+	actual, err := baseTest.RunDLRCommand(inputs)
 	if err != nil {
 		t.Fatalf("Error running CLI command: %v", err)
 	}
 
 	// Verify key behaviors in the output regardless of message order
 	expectedSubstrings := []string{
-		fmt.Sprintf("Starting DLR review from %s", setup.GetSourceSubscriptionName()),
+		fmt.Sprintf("Starting DLR review from %s", baseTest.Setup.GetSourceSubscriptionName()),
 		"Message 1:",
 		"Message 2:",
 		"DLR Invalid Input Test message 1",
@@ -104,16 +73,13 @@ func TestDLRInvalidInputHandling(t *testing.T) {
 	t.Logf("DLR command executed for invalid input handling test")
 
 	// Allow time for moved messages to propagate.
-	time.Sleep(30 * time.Second)
+	baseTest.WaitForMessagePropagation()
 
 	// Poll the destination subscription for moved messages.
-	// We expect exactly 1 message to be moved (message 1).
-	received, err := testhelpers.PollMessages(setup.Context, setup.Client, setup.GetDestSubscriptionName(), testRunValue, 1)
+	// We expect exactly 1 message to be moved.
+	received, err := baseTest.GetMessagesFromDestination(1)
 	if err != nil {
 		t.Fatalf("Error receiving messages from destination: %v", err)
-	}
-	if len(received) != 1 {
-		t.Fatalf("Expected 1 message in destination, got %d", len(received))
 	}
 
 	// Verify the moved message is one of our test messages
@@ -124,17 +90,17 @@ func TestDLRInvalidInputHandling(t *testing.T) {
 
 	// Verify that no messages remain in the source subscription by using a custom checking approach
 	// instead of using PollMessages which expects a specific number of messages
-	time.Sleep(30 * time.Second)
+	baseTest.WaitForMessagePropagation()
 
 	// Create a custom receiver function to check for any messages
 	var foundMessage bool
-	cctx, cancel := context.WithTimeout(setup.Context, 10*time.Second)
+	cctx, cancel := context.WithTimeout(baseTest.Setup.Context, 10*time.Second)
 	defer cancel()
 
 	// Use Subscriber directly instead of PollMessages
-	subscriber := setup.Client.Subscriber(setup.GetSourceSubscriptionName())
+	subscriber := baseTest.Setup.Client.Subscriber(baseTest.Setup.GetSourceSubscriptionName())
 	err = subscriber.Receive(cctx, func(ctx context.Context, m *pubsub.Message) {
-		if m.Attributes["testRun"] == testRunValue {
+		if m.Attributes["testRun"] == baseTest.TestRunID {
 			foundMessage = true
 			m.Ack()
 			cancel() // Stop receiving as soon as we find a matching message
