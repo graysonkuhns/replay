@@ -6,16 +6,76 @@ package cmd
 import (
 	"bufio"
 	"context"
-	"encoding/json" // added
 	"fmt"
+	"io"
 	"os"
 	"strings"
-	"time"
 
-	"cloud.google.com/go/pubsub/v2"
-	pubsubpb "cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"
 	"github.com/spf13/cobra"
 )
+
+// DLRHandler implements MessageHandler for interactive dead-letter review
+type DLRHandler struct {
+	broker MessageBroker
+	config CommandConfig
+	reader *bufio.Reader
+	output io.Writer
+}
+
+// NewDLRHandler creates a new DLR handler
+func NewDLRHandler(broker MessageBroker, config CommandConfig) *DLRHandler {
+	return &DLRHandler{
+		broker: broker,
+		config: config,
+		reader: bufio.NewReader(os.Stdin),
+		output: os.Stdout,
+	}
+}
+
+// HandleMessage implements the interactive message handling for DLR
+func (h *DLRHandler) HandleMessage(ctx context.Context, message *Message, msgNum int) (bool, error) {
+	// Display message details
+	fmt.Fprintf(h.output, "\nMessage %d:\n", msgNum)
+
+	// Format and display message data
+	dataStr := FormatMessageData(message.Data, h.config.PrettyJSON)
+	if h.config.PrettyJSON && strings.HasPrefix(dataStr, "{") {
+		fmt.Fprintf(h.output, "Data (pretty JSON):\n%s\n", dataStr)
+	} else {
+		fmt.Fprintf(h.output, "Data:\n%s\n", dataStr)
+	}
+	fmt.Fprintf(h.output, "Attributes: %v\n", message.Attributes)
+
+	// Interactive prompt loop
+	for {
+		fmt.Fprint(h.output, "Choose action ([m]ove / [d]iscard / [q]uit): ")
+		input, _ := h.reader.ReadString('\n')
+		input = strings.TrimSpace(strings.ToLower(input))
+
+		switch input {
+		case "m":
+			// Move the message
+			if err := h.broker.Publish(ctx, message); err != nil {
+				return false, fmt.Errorf("failed to move message %d", msgNum)
+			}
+			fmt.Fprintf(h.output, "Message %d moved successfully\n", msgNum)
+			return true, nil
+
+		case "d":
+			// Discard the message
+			fmt.Fprintf(h.output, "Message %d discarded (acked)\n", msgNum)
+			return true, nil
+
+		case "q":
+			// Quit without acknowledging
+			fmt.Fprintln(h.output, "Quitting review...")
+			return false, fmt.Errorf("quit")
+
+		default:
+			fmt.Fprintln(h.output, "Invalid input. Please enter 'm', 'd', or 'q'.")
+		}
+	}
+}
 
 // dlrCmd represents the dlr command
 var dlrCmd = &cobra.Command{
@@ -24,163 +84,31 @@ var dlrCmd = &cobra.Command{
 	Long: `Interactively review dead-lettered messages and choose to discard or move each message.
 For moved messages, the message is republished to the destination.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		// Parse flags
-		sourceType, _ := cmd.Flags().GetString("source-type")
-		destType, _ := cmd.Flags().GetString("destination-type")
-		source, _ := cmd.Flags().GetString("source")
-		destination, _ := cmd.Flags().GetString("destination")
-		count, _ := cmd.Flags().GetInt("count")
-		pretty, _ := cmd.Flags().GetBool("pretty-json")
-		pollTimeoutSec, _ := cmd.Flags().GetInt("polling-timeout-seconds")
-		// Validate supported types
-		if sourceType != "GCP_PUBSUB_SUBSCRIPTION" {
-			fmt.Printf("Error: unsupported source type: %s. Supported: GCP_PUBSUB_SUBSCRIPTION\n", sourceType)
+		// Parse and validate configuration
+		config, err := ParseCommandConfig(cmd)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
 			return
 		}
-		if destType != "GCP_PUBSUB_TOPIC" {
-			fmt.Printf("Error: unsupported destination type: %s. Supported: GCP_PUBSUB_TOPIC\n", destType)
-			return
-		}
-		fmt.Printf("Starting DLR review from %s\n", source)
+
+		fmt.Printf("Starting DLR review from %s\n", config.Source)
 		ctx := context.Background()
 
-		// Set up subscription client
-		subParts := strings.Split(source, "/")
-		if len(subParts) < 4 {
-			fmt.Printf("Error: Invalid subscription resource format: %s\n", source)
-			return
-		}
-		subProj := subParts[1]
-		subClient, err := pubsub.NewClient(ctx, subProj)
+		// Create message broker
+		broker, err := NewPubSubBroker(ctx, config.Source, config.Destination)
 		if err != nil {
-			fmt.Printf("Error: Failed to create subscription client: %v\n", err)
+			fmt.Printf("Error: %v\n", err)
 			return
 		}
-		defer subClient.Close()
+		defer broker.Close()
 
-		// Set up topic client
-		topicParts := strings.Split(destination, "/")
-		if len(topicParts) < 4 {
-			fmt.Printf("Error: Invalid topic resource format: %s\n", destination)
-			return
-		}
-		topicProj := topicParts[1]
+		// Create handler and processor
+		handler := NewDLRHandler(broker, *config)
+		processor := NewMessageProcessor(broker, *config, handler, os.Stdout)
 
-		// Create topic client (may be different project)
-		var topicClient *pubsub.Client
-		if topicProj == subProj {
-			topicClient = subClient // Reuse same client if same project
-		} else {
-			topicClient, err = pubsub.NewClient(ctx, topicProj)
-			if err != nil {
-				fmt.Printf("Error: Failed to create topic client: %v\n", err)
-				return
-			}
-			defer topicClient.Close()
-		}
+		// Process messages
+		processed, _ := processor.Process(ctx)
 
-		// Create publisher for the destination topic
-		publisher := topicClient.Publisher(destination)
-		defer publisher.Stop()
-
-		// Use the SubscriptionAdminClient for manual pull operations
-		subscriberClient := subClient.SubscriptionAdminClient
-		defer subscriberClient.Close()
-
-		reader := bufio.NewReader(os.Stdin)
-		processed := 0
-
-		// Loop to pull messages interactively
-		for {
-			msgNum := processed + 1
-			pollCtx, pollCancel := context.WithTimeout(ctx, time.Duration(pollTimeoutSec)*time.Second)
-			req := &pubsubpb.PullRequest{
-				Subscription: source,
-				MaxMessages:  1,
-			}
-			resp, err := subscriberClient.Pull(pollCtx, req)
-			pollCancel()
-			if err != nil {
-				if strings.Contains(err.Error(), "DeadlineExceeded") {
-					break
-				}
-				continue
-			}
-			if len(resp.ReceivedMessages) == 0 {
-				break
-			}
-			receivedMsg := resp.ReceivedMessages[0]
-
-			// Show message details and prompt for action
-			fmt.Printf("\nMessage %d:\n", msgNum)
-			if pretty {
-				var jsonData interface{}
-				if err := json.Unmarshal(receivedMsg.Message.Data, &jsonData); err == nil {
-					if prettyBytes, err := json.MarshalIndent(jsonData, "", "  "); err == nil {
-						fmt.Printf("Data (pretty JSON):\n%s\n", string(prettyBytes))
-					} else {
-						fmt.Printf("Data:\n%s\n", string(receivedMsg.Message.Data))
-					}
-				} else {
-					fmt.Printf("Data:\n%s\n", string(receivedMsg.Message.Data))
-				}
-			} else {
-				fmt.Printf("Data:\n%s\n", string(receivedMsg.Message.Data))
-			}
-			fmt.Printf("Attributes: %v\n", receivedMsg.Message.Attributes)
-
-			// Keep asking for input until a valid option is selected
-			var input string
-			for {
-				fmt.Print("Choose action ([m]ove / [d]iscard / [q]uit): ")
-				input, _ = reader.ReadString('\n')
-				input = strings.TrimSpace(strings.ToLower(input))
-				if input == "m" || input == "d" || input == "q" {
-					break
-				}
-				fmt.Printf("Invalid input. Please enter 'm', 'd', or 'q'.\n")
-			}
-
-			if input == "m" {
-				result := publisher.Publish(ctx, &pubsub.Message{
-					Data:       receivedMsg.Message.Data,
-					Attributes: receivedMsg.Message.Attributes,
-				})
-				_, err := result.Get(ctx)
-				if err != nil {
-					fmt.Printf("Failed to move message %d\n", msgNum)
-					continue
-				}
-				fmt.Printf("Message %d moved successfully\n", msgNum)
-			} else if input == "d" {
-				fmt.Printf("Message %d discarded (acked)\n", msgNum)
-			} else if input == "q" {
-				fmt.Printf("Quitting review...\n")
-				// When quitting, do not acknowledge the message
-				// We need to explicitly log this so the test can verify the behavior
-				break
-			}
-
-			// Only acknowledge the message if the user chose to move or discard it
-			// Skip acknowledgement when quitting to keep the message in the subscription
-			if input == "m" || input == "d" {
-				// Acknowledge the message
-				ackReq := &pubsubpb.AcknowledgeRequest{
-					Subscription: source,
-					AckIds:       []string{receivedMsg.AckId},
-				}
-				if err := subscriberClient.Acknowledge(ctx, ackReq); err != nil {
-					// Failed to acknowledge, but continue processing
-					fmt.Printf("Warning: failed to acknowledge message %d: %v\n", msgNum, err)
-				}
-
-				processed++
-			}
-
-			if count > 0 && processed >= count {
-				break
-			}
-		}
 		fmt.Printf("\nDead-lettered messages review completed. Total messages processed: %d\n", processed)
 	},
 }
@@ -188,16 +116,9 @@ For moved messages, the message is republished to the destination.`,
 func init() {
 	rootCmd.AddCommand(dlrCmd)
 
-	// Define flags similar to move command flags
-	dlrCmd.Flags().String("source-type", "", "Message source type")
-	dlrCmd.Flags().String("destination-type", "", "Message destination type")
-	dlrCmd.Flags().String("source", "", "Full source resource name (e.g. projects/<proj>/subscriptions/<sub>)")
-	dlrCmd.Flags().String("destination", "", "Full destination resource name (e.g. projects/<proj>/topics/<topic>)")
-	dlrCmd.Flags().Int("count", 0, "Number of messages to process (0 for all messages)")
+	// Add common flags
+	AddCommonFlags(dlrCmd)
+
+	// Add DLR-specific flags
 	dlrCmd.Flags().Bool("pretty-json", false, "Display message data as pretty JSON")
-	dlrCmd.Flags().Int("polling-timeout-seconds", 10, "Timeout in seconds for polling a single message")
-	_ = dlrCmd.MarkFlagRequired("source-type")
-	_ = dlrCmd.MarkFlagRequired("destination-type")
-	_ = dlrCmd.MarkFlagRequired("source")
-	_ = dlrCmd.MarkFlagRequired("destination")
 }

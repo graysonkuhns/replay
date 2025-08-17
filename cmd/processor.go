@@ -1,0 +1,104 @@
+package cmd
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"strings"
+)
+
+// MessageHandler defines how to handle each message
+type MessageHandler interface {
+	// HandleMessage processes a message and returns whether to acknowledge it
+	HandleMessage(ctx context.Context, message *Message, msgNum int) (acknowledge bool, err error)
+}
+
+// MessageProcessor handles the common logic for processing messages
+type MessageProcessor struct {
+	broker  MessageBroker
+	config  CommandConfig
+	handler MessageHandler
+	output  io.Writer
+}
+
+// NewMessageProcessor creates a new message processor
+func NewMessageProcessor(broker MessageBroker, config CommandConfig, handler MessageHandler, output io.Writer) *MessageProcessor {
+	return &MessageProcessor{
+		broker:  broker,
+		config:  config,
+		handler: handler,
+		output:  output,
+	}
+}
+
+// Process runs the message processing loop
+func (p *MessageProcessor) Process(ctx context.Context) (int, error) {
+	processed := 0
+
+	for {
+		// Pull a message
+		message, err := p.broker.Pull(ctx, PullConfig{
+			MaxMessages: 1,
+			Timeout:     p.config.PollTimeout,
+		})
+
+		// Handle pull errors
+		if err != nil {
+			if strings.Contains(err.Error(), "DeadlineExceeded") ||
+				strings.Contains(err.Error(), "context deadline exceeded") {
+				break
+			}
+			fmt.Fprintf(p.output, "Error during message pull: %v\n", err)
+			continue
+		}
+
+		// No more messages
+		if message == nil {
+			break
+		}
+
+		msgNum := processed + 1
+
+		// Handle the message
+		acknowledge, err := p.handler.HandleMessage(ctx, message, msgNum)
+		if err != nil {
+			// Check if it's a quit error
+			if strings.Contains(err.Error(), "quit") {
+				break
+			}
+			fmt.Fprintf(p.output, "Error handling message %d: %v\n", msgNum, err)
+			continue
+		}
+
+		// Acknowledge if requested
+		if acknowledge {
+			if err := p.broker.Acknowledge(ctx, message.AckID); err != nil {
+				fmt.Fprintf(p.output, "Warning: failed to acknowledge message %d: %v\n", msgNum, err)
+			}
+			processed++
+		}
+
+		// Check if we've reached the count limit
+		if p.config.Count > 0 && processed >= p.config.Count {
+			break
+		}
+	}
+
+	return processed, nil
+}
+
+// FormatMessageData formats message data for display
+func FormatMessageData(data []byte, prettyJSON bool) string {
+	if !prettyJSON {
+		return string(data)
+	}
+
+	var jsonData interface{}
+	if err := json.Unmarshal(data, &jsonData); err == nil {
+		if prettyBytes, err := json.MarshalIndent(jsonData, "", "  "); err == nil {
+			return string(prettyBytes)
+		}
+	}
+	return string(data)
+}
