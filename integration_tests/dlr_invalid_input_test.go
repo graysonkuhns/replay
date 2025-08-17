@@ -9,7 +9,7 @@ import (
 
 	"replay/integration_tests/testhelpers"
 
-	"cloud.google.com/go/pubsub"
+	"cloud.google.com/go/pubsub/v2"
 )
 
 func TestDLRInvalidInputHandling(t *testing.T) {
@@ -20,7 +20,7 @@ func TestDLRInvalidInputHandling(t *testing.T) {
 
 	// Prepare 2 messages with unique body content.
 	numMessages := 2
-	sourceTopic := setup.GetSourceTopic()
+	sourceTopicName := setup.GetSourceTopicName()
 	var messages []pubsub.Message
 
 	for i := 1; i <= numMessages; i++ {
@@ -33,7 +33,7 @@ func TestDLRInvalidInputHandling(t *testing.T) {
 		})
 	}
 
-	_, err := testhelpers.PublishTestMessages(setup.Context, sourceTopic, messages, "")
+	_, err := testhelpers.PublishTestMessages(setup.Context, setup.Client, sourceTopicName, messages, "")
 	if err != nil {
 		t.Fatalf("Failed to publish test messages: %v", err)
 	}
@@ -47,8 +47,8 @@ func TestDLRInvalidInputHandling(t *testing.T) {
 		"dlr",
 		"--source-type", "GCP_PUBSUB_SUBSCRIPTION",
 		"--destination-type", "GCP_PUBSUB_TOPIC",
-		"--source", fmt.Sprintf("projects/%s/subscriptions/%s", setup.ProjectID, setup.SourceSubName),
-		"--destination", fmt.Sprintf("projects/%s/topics/%s", setup.ProjectID, setup.DestTopicName),
+		"--source", setup.GetSourceSubscriptionName(),
+		"--destination", setup.GetDestTopicName(),
 	}
 
 	// Simulate user inputs:
@@ -69,7 +69,7 @@ func TestDLRInvalidInputHandling(t *testing.T) {
 
 	// Verify key behaviors in the output regardless of message order
 	expectedSubstrings := []string{
-		fmt.Sprintf("Starting DLR review from projects/%s/subscriptions/%s", setup.ProjectID, setup.SourceSubName),
+		fmt.Sprintf("Starting DLR review from %s", setup.GetSourceSubscriptionName()),
 		"Message 1:",
 		"Message 2:",
 		"DLR Invalid Input Test message 1",
@@ -108,7 +108,7 @@ func TestDLRInvalidInputHandling(t *testing.T) {
 
 	// Poll the destination subscription for moved messages.
 	// We expect exactly 1 message to be moved (message 1).
-	received, err := testhelpers.PollMessages(setup.Context, setup.DestSub, testRunValue, 1)
+	received, err := testhelpers.PollMessages(setup.Context, setup.Client, setup.GetDestSubscriptionName(), testRunValue, 1)
 	if err != nil {
 		t.Fatalf("Error receiving messages from destination: %v", err)
 	}
@@ -131,8 +131,9 @@ func TestDLRInvalidInputHandling(t *testing.T) {
 	cctx, cancel := context.WithTimeout(setup.Context, 10*time.Second)
 	defer cancel()
 
-	// Use Receive directly instead of PollMessages
-	err = setup.SourceSub.Receive(cctx, func(ctx context.Context, m *pubsub.Message) {
+	// Use Subscriber directly instead of PollMessages
+	subscriber := setup.Client.Subscriber(setup.GetSourceSubscriptionName())
+	err = subscriber.Receive(cctx, func(ctx context.Context, m *pubsub.Message) {
 		if m.Attributes["testRun"] == testRunValue {
 			foundMessage = true
 			m.Ack()

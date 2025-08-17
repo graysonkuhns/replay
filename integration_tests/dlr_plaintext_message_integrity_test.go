@@ -19,7 +19,7 @@ func TestDLRPlaintextMessageIntegrity(t *testing.T) {
 
 	// Prepare messages with unique plaintext body content using the builder.
 	numMessages := 3
-	sourceTopic := setup.GetSourceTopic()
+	sourceTopicName := setup.GetSourceTopicName()
 
 	builder := testhelpers.NewTestMessageBuilder().
 		WithAttributes(map[string]string{"testRun": testRunValue})
@@ -33,7 +33,7 @@ func TestDLRPlaintextMessageIntegrity(t *testing.T) {
 
 	messages := builder.Build()
 
-	_, err := testhelpers.PublishTestMessages(setup.Context, sourceTopic, messages, "test-ordering-key")
+	_, err := testhelpers.PublishTestMessages(setup.Context, setup.Client, sourceTopicName, messages, "test-ordering-key")
 	if err != nil {
 		t.Fatalf("Failed to publish test messages: %v", err)
 	}
@@ -44,8 +44,8 @@ func TestDLRPlaintextMessageIntegrity(t *testing.T) {
 		"dlr",
 		"--source-type", "GCP_PUBSUB_SUBSCRIPTION",
 		"--destination-type", "GCP_PUBSUB_TOPIC",
-		"--source", fmt.Sprintf("projects/%s/subscriptions/%s", setup.ProjectID, setup.SourceSubName),
-		"--destination", fmt.Sprintf("projects/%s/topics/%s", setup.ProjectID, setup.DestTopicName),
+		"--source", setup.GetSourceSubscriptionName(),
+		"--destination", setup.GetDestTopicName(),
 	}
 
 	// Simulate user inputs: "m" (move) for all messages
@@ -76,7 +76,7 @@ func TestDLRPlaintextMessageIntegrity(t *testing.T) {
 	}
 
 	// Verify the output structure without assuming message order
-	if !strings.Contains(actual, fmt.Sprintf("Starting DLR review from projects/%s/subscriptions/%s", setup.ProjectID, setup.SourceSubName)) {
+	if !strings.Contains(actual, fmt.Sprintf("Starting DLR review from %s", setup.GetSourceSubscriptionName())) {
 		t.Fatalf("Expected DLR start message not found in output")
 	}
 
@@ -104,7 +104,7 @@ func TestDLRPlaintextMessageIntegrity(t *testing.T) {
 	time.Sleep(20 * time.Second)
 
 	// Poll the destination subscription for moved messages.
-	received, err := testhelpers.PollMessages(setup.Context, setup.DestSub, testRunValue, numMessages)
+	received, err := testhelpers.PollMessages(setup.Context, setup.Client, setup.GetDestSubscriptionName(), testRunValue, numMessages)
 	if err != nil {
 		t.Fatalf("Error receiving messages from destination: %v", err)
 	}
@@ -127,7 +127,7 @@ func TestDLRPlaintextMessageIntegrity(t *testing.T) {
 	}
 
 	// Verify that the source subscription is empty (all messages were moved)
-	sourceReceived, err := testhelpers.PollMessages(setup.Context, setup.SourceSub, testRunValue, 0)
+	sourceReceived, err := testhelpers.PollMessages(setup.Context, setup.Client, setup.GetSourceSubscriptionName(), testRunValue, 0)
 	if err != nil {
 		t.Fatalf("Error polling source subscription: %v", err)
 	}

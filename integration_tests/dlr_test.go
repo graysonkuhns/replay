@@ -8,7 +8,7 @@ import (
 
 	"replay/integration_tests/testhelpers"
 
-	"cloud.google.com/go/pubsub"
+	"cloud.google.com/go/pubsub/v2"
 )
 
 func TestDLROperation(t *testing.T) {
@@ -18,7 +18,7 @@ func TestDLROperation(t *testing.T) {
 	testRunValue := "dlr_test"
 
 	// Publish two test messages to the dead-letter topic: one to move and one to discard.
-	sourceTopic := setup.GetSourceTopic()
+	sourceTopicName := setup.GetSourceTopicName()
 	messages := []pubsub.Message{
 		{
 			Data: []byte("Test message move"),
@@ -33,7 +33,7 @@ func TestDLROperation(t *testing.T) {
 			},
 		},
 	}
-	_, err := testhelpers.PublishTestMessages(setup.Context, sourceTopic, messages, "test-ordering-key")
+	_, err := testhelpers.PublishTestMessages(setup.Context, setup.Client, sourceTopicName, messages, "test-ordering-key")
 	if err != nil {
 		t.Fatalf("Failed to publish test messages: %v", err)
 	}
@@ -46,8 +46,8 @@ func TestDLROperation(t *testing.T) {
 		"dlr",
 		"--source-type", "GCP_PUBSUB_SUBSCRIPTION",
 		"--destination-type", "GCP_PUBSUB_TOPIC",
-		"--source", fmt.Sprintf("projects/%s/subscriptions/%s", setup.ProjectID, setup.SourceSubName),
-		"--destination", fmt.Sprintf("projects/%s/topics/%s", setup.ProjectID, setup.DestTopicName),
+		"--source", setup.GetSourceSubscriptionName(),
+		"--destination", setup.GetDestTopicName(),
 	}
 
 	// Simulate user inputs: "m" for moving message 1 and "d" for discarding message 2.
@@ -64,7 +64,7 @@ func TestDLROperation(t *testing.T) {
 	}
 
 	// Verify the output structure without assuming message order
-	if !strings.Contains(actual, fmt.Sprintf("Starting DLR review from projects/%s/subscriptions/%s", setup.ProjectID, setup.SourceSubName)) {
+	if !strings.Contains(actual, fmt.Sprintf("Starting DLR review from %s", setup.GetSourceSubscriptionName())) {
 		t.Fatalf("Expected DLR start message not found in output")
 	}
 
@@ -96,7 +96,7 @@ func TestDLROperation(t *testing.T) {
 	time.Sleep(20 * time.Second)
 
 	// Verify the message was published to the destination topic via its subscription.
-	received, err := testhelpers.PollMessages(setup.Context, setup.DestSub, testRunValue, 1)
+	received, err := testhelpers.PollMessages(setup.Context, setup.Client, setup.GetDestSubscriptionName(), testRunValue, 1)
 	if err != nil {
 		t.Fatalf("Error receiving messages: %v", err)
 	}
@@ -107,7 +107,7 @@ func TestDLROperation(t *testing.T) {
 	// log.Printf("Successfully moved and received %d message", len(received))
 
 	// Verify that the discarded message is no longer in the source subscription.
-	sourceReceived, err := testhelpers.PollMessages(setup.Context, setup.SourceSub, testRunValue, 0)
+	sourceReceived, err := testhelpers.PollMessages(setup.Context, setup.Client, setup.GetSourceSubscriptionName(), testRunValue, 0)
 	if err != nil {
 		t.Fatalf("Error polling source subscription: %v", err)
 	}

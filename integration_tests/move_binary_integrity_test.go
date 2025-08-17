@@ -10,7 +10,7 @@ import (
 
 	"replay/integration_tests/testhelpers"
 
-	"cloud.google.com/go/pubsub"
+	"cloud.google.com/go/pubsub/v2"
 )
 
 func TestMoveBinaryMessageIntegrity(t *testing.T) {
@@ -21,7 +21,7 @@ func TestMoveBinaryMessageIntegrity(t *testing.T) {
 
 	// Prepare different types of binary data
 	numMessages := 3
-	sourceTopic := setup.GetSourceTopic()
+	sourceTopicName := setup.GetSourceTopicName()
 	var messages []pubsub.Message
 	var expectedBinaryData [][]byte
 
@@ -75,7 +75,7 @@ func TestMoveBinaryMessageIntegrity(t *testing.T) {
 		})
 	}
 
-	_, err := testhelpers.PublishTestMessages(setup.Context, sourceTopic, messages, "binary-move-test-key")
+	_, err := testhelpers.PublishTestMessages(setup.Context, setup.Client, sourceTopicName, messages, "binary-move-test-key")
 	if err != nil {
 		t.Fatalf("Failed to publish binary test messages: %v", err)
 	}
@@ -86,8 +86,8 @@ func TestMoveBinaryMessageIntegrity(t *testing.T) {
 		"move",
 		"--source-type", "GCP_PUBSUB_SUBSCRIPTION",
 		"--destination-type", "GCP_PUBSUB_TOPIC",
-		"--source", fmt.Sprintf("projects/%s/subscriptions/%s", setup.ProjectID, setup.SourceSubName),
-		"--destination", fmt.Sprintf("projects/%s/topics/%s", setup.ProjectID, setup.DestTopicName),
+		"--source", setup.GetSourceSubscriptionName(),
+		"--destination", setup.GetDestTopicName(),
 		"--count", fmt.Sprintf("%d", numMessages),
 	}
 
@@ -101,7 +101,7 @@ func TestMoveBinaryMessageIntegrity(t *testing.T) {
 	time.Sleep(20 * time.Second)
 
 	// Poll the destination subscription for moved messages.
-	received, err := testhelpers.PollMessages(setup.Context, setup.DestSub, testRunValue, numMessages)
+	received, err := testhelpers.PollMessages(setup.Context, setup.Client, setup.GetDestSubscriptionName(), testRunValue, numMessages)
 	if err != nil {
 		t.Fatalf("Error receiving messages from destination: %v", err)
 	}
@@ -125,7 +125,7 @@ func TestMoveBinaryMessageIntegrity(t *testing.T) {
 	}
 
 	// Verify that the source subscription is empty
-	sourceReceived, err := testhelpers.PollMessages(setup.Context, setup.SourceSub, testRunValue, 0)
+	sourceReceived, err := testhelpers.PollMessages(setup.Context, setup.Client, setup.GetSourceSubscriptionName(), testRunValue, 0)
 	if err != nil {
 		t.Fatalf("Error polling source subscription: %v", err)
 	}

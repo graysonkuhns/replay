@@ -25,8 +25,8 @@ type TestSetup struct {
 	DestTopicName   string
 	DestSubName     string
 	// Resource names (full paths) for use with v2 API
-	SourceSubFullName  string
-	DestSubFullName    string
+	SourceSubFullName   string
+	DestSubFullName     string
 	SourceTopicFullName string
 	DestTopicFullName   string
 }
@@ -91,22 +91,22 @@ func SetupIntegrationTest(t *testing.T) *TestSetup {
 	// Create subscriptions using v2 admin client
 	subAdmin := client.SubscriptionAdminClient
 	_, err = subAdmin.CreateSubscription(ctx, &pubsubpb.Subscription{
-		Name:                       sourceSubFullName,
-		Topic:                      sourceTopicFullName,
-		AckDeadlineSeconds:         60,
-		EnableMessageOrdering:      true,
-		MessageRetentionDuration:   durationpb.New(604800 * time.Second), // 7 days default
+		Name:                     sourceSubFullName,
+		Topic:                    sourceTopicFullName,
+		AckDeadlineSeconds:       60,
+		EnableMessageOrdering:    true,
+		MessageRetentionDuration: durationpb.New(604800 * time.Second), // 7 days default
 	})
 	if err != nil {
 		t.Fatalf("Failed to create source subscription %s: %v", sourceSubFullName, err)
 	}
 
 	_, err = subAdmin.CreateSubscription(ctx, &pubsubpb.Subscription{
-		Name:                       destSubFullName,
-		Topic:                      destTopicFullName,
-		AckDeadlineSeconds:         60,
-		EnableMessageOrdering:      true,
-		MessageRetentionDuration:   durationpb.New(604800 * time.Second), // 7 days default
+		Name:                     destSubFullName,
+		Topic:                    destTopicFullName,
+		AckDeadlineSeconds:       60,
+		EnableMessageOrdering:    true,
+		MessageRetentionDuration: durationpb.New(604800 * time.Second), // 7 days default
 	})
 	if err != nil {
 		t.Fatalf("Failed to create destination subscription %s: %v", destSubFullName, err)
