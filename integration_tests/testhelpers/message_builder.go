@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"cloud.google.com/go/pubsub"
+	"cloud.google.com/go/pubsub/v2"
 )
 
 // TestMessageBuilder provides a fluent interface for building test messages.

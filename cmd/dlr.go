@@ -12,8 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"cloud.google.com/go/pubsub"
-	pubsubapiv1 "cloud.google.com/go/pubsub/v2/apiv1"
+	"cloud.google.com/go/pubsub/v2"
 	pubsubpb "cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"
 	"github.com/spf13/cobra"
 )
@@ -66,20 +65,26 @@ For moved messages, the message is republished to the destination.`,
 			return
 		}
 		topicProj := topicParts[1]
-		topicClient, err := pubsub.NewClient(ctx, topicProj)
-		if err != nil {
-			fmt.Printf("Error: Failed to create topic client: %v\n", err)
-			return
-		}
-		defer topicClient.Close()
-		topic := topicClient.Topic(topicParts[3])
 
-		// Create low-level Subscriber client
-		subscriberClient, err := pubsubapiv1.NewSubscriptionAdminClient(ctx)
-		if err != nil {
-			fmt.Printf("Error: Failed to create subscriber client: %v\n", err)
-			return
+		// Create topic client (may be different project)
+		var topicClient *pubsub.Client
+		if topicProj == subProj {
+			topicClient = subClient // Reuse same client if same project
+		} else {
+			topicClient, err = pubsub.NewClient(ctx, topicProj)
+			if err != nil {
+				fmt.Printf("Error: Failed to create topic client: %v\n", err)
+				return
+			}
+			defer topicClient.Close()
 		}
+
+		// Create publisher for the destination topic
+		publisher := topicClient.Publisher(destination)
+		defer publisher.Stop()
+
+		// Use the SubscriptionAdminClient for manual pull operations
+		subscriberClient := subClient.SubscriptionAdminClient
 		defer subscriberClient.Close()
 
 		reader := bufio.NewReader(os.Stdin)
@@ -137,7 +142,7 @@ For moved messages, the message is republished to the destination.`,
 			}
 
 			if input == "m" {
-				result := topic.Publish(ctx, &pubsub.Message{
+				result := publisher.Publish(ctx, &pubsub.Message{
 					Data:       receivedMsg.Message.Data,
 					Attributes: receivedMsg.Message.Attributes,
 				})

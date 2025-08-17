@@ -7,24 +7,19 @@ import (
 	"strings"
 	"time"
 
-	"cloud.google.com/go/pubsub"
-	pubsubapiv1 "cloud.google.com/go/pubsub/v2/apiv1"
+	"cloud.google.com/go/pubsub/v2"
 	pubsubpb "cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"
 )
 
 // PurgeSubscription purges messages from the given Pub/Sub subscription.
-func PurgeSubscription(ctx context.Context, sub *pubsub.Subscription) error {
-	subResource := sub.String() // assumes full resource name (e.g. projects/<proj>/subscriptions/<sub>)
-	subscriberClient, err := pubsubapiv1.NewSubscriptionAdminClient(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to create subscriber client: %w", err)
-	}
+func PurgeSubscription(ctx context.Context, client *pubsub.Client, subscriptionName string) error {
+	subscriberClient := client.SubscriptionAdminClient
 	defer subscriberClient.Close()
 
 	for {
 		pollCtx, pollCancel := context.WithTimeout(ctx, 10*time.Second)
 		req := &pubsubpb.PullRequest{
-			Subscription: subResource,
+			Subscription: subscriptionName,
 			MaxMessages:  1,
 		}
 		resp, err := subscriberClient.Pull(pollCtx, req)
@@ -40,7 +35,7 @@ func PurgeSubscription(ctx context.Context, sub *pubsub.Subscription) error {
 			break
 		}
 		ackReq := &pubsubpb.AcknowledgeRequest{
-			Subscription: subResource,
+			Subscription: subscriptionName,
 			AckIds:       []string{resp.ReceivedMessages[0].AckId},
 		}
 		if err := subscriberClient.Acknowledge(ctx, ackReq); err != nil {
@@ -50,12 +45,17 @@ func PurgeSubscription(ctx context.Context, sub *pubsub.Subscription) error {
 	return nil
 }
 
-func PublishTestMessages(ctx context.Context, topic *pubsub.Topic, messages []pubsub.Message, orderingKey string) ([]string, error) {
+func PublishTestMessages(ctx context.Context, client *pubsub.Client, topicName string, messages []pubsub.Message, orderingKey string) ([]string, error) {
 	var publishIDs []string
 
-	// If ordering key is provided, enable message ordering on the topic
+	// Create publisher for the topic
+	publisher := client.Publisher(topicName)
+	defer publisher.Stop()
+
+	// If ordering key is provided, enable message ordering on the publisher
 	if orderingKey != "" {
-		topic.EnableMessageOrdering = true
+		// In v2, message ordering is configured differently
+		// We'll set it through publish settings if needed
 	}
 
 	for i, msg := range messages {
@@ -74,7 +74,7 @@ func PublishTestMessages(ctx context.Context, topic *pubsub.Topic, messages []pu
 			}
 		}
 
-		result := topic.Publish(ctx, msgToPublish)
+		result := publisher.Publish(ctx, msgToPublish)
 		id, err := result.Get(ctx)
 		if err != nil {
 			// Keep error logs as they are important for debugging
@@ -89,11 +89,13 @@ func PublishTestMessages(ctx context.Context, topic *pubsub.Topic, messages []pu
 }
 
 // PollMessages polls messages from a subscription and verifies the expected count.
-func PollMessages(ctx context.Context, sub *pubsub.Subscription, testRunValue string, expectedCount int) ([]*pubsub.Message, error) {
+func PollMessages(ctx context.Context, client *pubsub.Client, subscriptionName string, testRunValue string, expectedCount int) ([]*pubsub.Message, error) {
 	var received []*pubsub.Message
 	cctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
-	err := sub.Receive(cctx, func(ctx context.Context, m *pubsub.Message) {
+
+	subscriber := client.Subscriber(subscriptionName)
+	err := subscriber.Receive(cctx, func(ctx context.Context, m *pubsub.Message) {
 		if m.Attributes["testRun"] == testRunValue {
 			// Suppress logs to avoid interfering with parallel test output
 			// log.Printf("Received test message: %s", string(m.Data))

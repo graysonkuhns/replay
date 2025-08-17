@@ -3,7 +3,7 @@ package testhelpers
 import (
 	"time"
 
-	"cloud.google.com/go/pubsub"
+	"cloud.google.com/go/pubsub/v2"
 )
 
 // CreateMixedTestMessages demonstrates the power of the TestMessageBuilder

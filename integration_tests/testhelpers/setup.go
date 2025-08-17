@@ -10,7 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"cloud.google.com/go/pubsub"
+	"cloud.google.com/go/pubsub/v2"
+	pubsubpb "cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 // TestSetup holds the common setup for integration tests
@@ -22,10 +24,11 @@ type TestSetup struct {
 	SourceSubName   string
 	DestTopicName   string
 	DestSubName     string
-	SourceSub       *pubsub.Subscription
-	DestSub         *pubsub.Subscription
-	SourceTopic     *pubsub.Topic
-	DestTopic       *pubsub.Topic
+	// Resource names (full paths) for use with v2 API
+	SourceSubFullName  string
+	DestSubFullName    string
+	SourceTopicFullName string
+	DestTopicFullName   string
 }
 
 // generateUniqueResourceName creates a unique resource name for test isolation
@@ -62,49 +65,65 @@ func SetupIntegrationTest(t *testing.T) *TestSetup {
 	destTopicName := generateUniqueResourceName("test-events", testName)
 	destSubName := generateUniqueResourceName("test-events-subscription", testName)
 
-	// Create topics
-	sourceTopic, err := client.CreateTopic(ctx, sourceTopicName)
+	// Create full resource paths
+	sourceTopicFullName := fmt.Sprintf("projects/%s/topics/%s", projectID, sourceTopicName)
+	sourceSubFullName := fmt.Sprintf("projects/%s/subscriptions/%s", projectID, sourceSubName)
+	destTopicFullName := fmt.Sprintf("projects/%s/topics/%s", projectID, destTopicName)
+	destSubFullName := fmt.Sprintf("projects/%s/subscriptions/%s", projectID, destSubName)
+
+	// Create topics using v2 admin client
+	topicAdmin := client.TopicAdminClient
+	_, err = topicAdmin.CreateTopic(ctx, &pubsubpb.Topic{
+		Name: sourceTopicFullName,
+	})
 	if err != nil {
-		t.Fatalf("Failed to create source topic %s: %v", sourceTopicName, err)
+		t.Fatalf("Failed to create source topic %s: %v", sourceTopicFullName, err)
 	}
 	// Suppress creation logs to avoid interfering with parallel test output
 
-	destTopic, err := client.CreateTopic(ctx, destTopicName)
-	if err != nil {
-		t.Fatalf("Failed to create destination topic %s: %v", destTopicName, err)
-	}
-
-	// Create subscriptions
-	sourceSub, err := client.CreateSubscription(ctx, sourceSubName, pubsub.SubscriptionConfig{
-		Topic:                 sourceTopic,
-		AckDeadline:           60 * time.Second,
-		EnableMessageOrdering: true,
+	_, err = topicAdmin.CreateTopic(ctx, &pubsubpb.Topic{
+		Name: destTopicFullName,
 	})
 	if err != nil {
-		t.Fatalf("Failed to create source subscription %s: %v", sourceSubName, err)
+		t.Fatalf("Failed to create destination topic %s: %v", destTopicFullName, err)
 	}
 
-	destSub, err := client.CreateSubscription(ctx, destSubName, pubsub.SubscriptionConfig{
-		Topic:                 destTopic,
-		AckDeadline:           60 * time.Second,
-		EnableMessageOrdering: true,
+	// Create subscriptions using v2 admin client
+	subAdmin := client.SubscriptionAdminClient
+	_, err = subAdmin.CreateSubscription(ctx, &pubsubpb.Subscription{
+		Name:                       sourceSubFullName,
+		Topic:                      sourceTopicFullName,
+		AckDeadlineSeconds:         60,
+		EnableMessageOrdering:      true,
+		MessageRetentionDuration:   durationpb.New(604800 * time.Second), // 7 days default
 	})
 	if err != nil {
-		t.Fatalf("Failed to create destination subscription %s: %v", destSubName, err)
+		t.Fatalf("Failed to create source subscription %s: %v", sourceSubFullName, err)
+	}
+
+	_, err = subAdmin.CreateSubscription(ctx, &pubsubpb.Subscription{
+		Name:                       destSubFullName,
+		Topic:                      destTopicFullName,
+		AckDeadlineSeconds:         60,
+		EnableMessageOrdering:      true,
+		MessageRetentionDuration:   durationpb.New(604800 * time.Second), // 7 days default
+	})
+	if err != nil {
+		t.Fatalf("Failed to create destination subscription %s: %v", destSubFullName, err)
 	}
 
 	setup := &TestSetup{
-		Context:         ctx,
-		Client:          client,
-		ProjectID:       projectID,
-		SourceTopicName: sourceTopicName,
-		SourceSubName:   sourceSubName,
-		DestTopicName:   destTopicName,
-		DestSubName:     destSubName,
-		SourceSub:       sourceSub,
-		DestSub:         destSub,
-		SourceTopic:     sourceTopic,
-		DestTopic:       destTopic,
+		Context:             ctx,
+		Client:              client,
+		ProjectID:           projectID,
+		SourceTopicName:     sourceTopicName,
+		SourceSubName:       sourceSubName,
+		DestTopicName:       destTopicName,
+		DestSubName:         destSubName,
+		SourceSubFullName:   sourceSubFullName,
+		DestSubFullName:     destSubFullName,
+		SourceTopicFullName: sourceTopicFullName,
+		DestTopicFullName:   destTopicFullName,
 	}
 
 	// Setup cleanup to delete resources after test
@@ -112,22 +131,32 @@ func SetupIntegrationTest(t *testing.T) *TestSetup {
 		// Suppress cleanup logs to avoid interfering with parallel test output
 		// Only log errors as they are important for debugging
 
-		// Delete subscriptions first
-		if err := sourceSub.Delete(ctx); err != nil {
-			log.Printf("Failed to delete source subscription %s: %v", sourceSubName, err)
+		// Delete subscriptions first using v2 admin client
+		subAdmin := client.SubscriptionAdminClient
+		if err := subAdmin.DeleteSubscription(ctx, &pubsubpb.DeleteSubscriptionRequest{
+			Subscription: sourceSubFullName,
+		}); err != nil {
+			log.Printf("Failed to delete source subscription %s: %v", sourceSubFullName, err)
 		}
 
-		if err := destSub.Delete(ctx); err != nil {
-			log.Printf("Failed to delete destination subscription %s: %v", destSubName, err)
+		if err := subAdmin.DeleteSubscription(ctx, &pubsubpb.DeleteSubscriptionRequest{
+			Subscription: destSubFullName,
+		}); err != nil {
+			log.Printf("Failed to delete destination subscription %s: %v", destSubFullName, err)
 		}
 
-		// Delete topics
-		if err := sourceTopic.Delete(ctx); err != nil {
-			log.Printf("Failed to delete source topic %s: %v", sourceTopicName, err)
+		// Delete topics using v2 admin client
+		topicAdmin := client.TopicAdminClient
+		if err := topicAdmin.DeleteTopic(ctx, &pubsubpb.DeleteTopicRequest{
+			Topic: sourceTopicFullName,
+		}); err != nil {
+			log.Printf("Failed to delete source topic %s: %v", sourceTopicFullName, err)
 		}
 
-		if err := destTopic.Delete(ctx); err != nil {
-			log.Printf("Failed to delete destination topic %s: %v", destTopicName, err)
+		if err := topicAdmin.DeleteTopic(ctx, &pubsubpb.DeleteTopicRequest{
+			Topic: destTopicFullName,
+		}); err != nil {
+			log.Printf("Failed to delete destination topic %s: %v", destTopicFullName, err)
 		}
 
 		client.Close()
@@ -136,12 +165,22 @@ func SetupIntegrationTest(t *testing.T) *TestSetup {
 	return setup
 }
 
-// GetSourceTopic returns the source topic
-func (s *TestSetup) GetSourceTopic() *pubsub.Topic {
-	return s.SourceTopic
+// GetSourceTopicName returns the source topic full resource name
+func (s *TestSetup) GetSourceTopicName() string {
+	return s.SourceTopicFullName
 }
 
-// GetDestTopic returns the destination topic
-func (s *TestSetup) GetDestTopic() *pubsub.Topic {
-	return s.DestTopic
+// GetDestTopicName returns the destination topic full resource name
+func (s *TestSetup) GetDestTopicName() string {
+	return s.DestTopicFullName
+}
+
+// GetSourceSubscriptionName returns the source subscription full resource name
+func (s *TestSetup) GetSourceSubscriptionName() string {
+	return s.SourceSubFullName
+}
+
+// GetDestSubscriptionName returns the destination subscription full resource name
+func (s *TestSetup) GetDestSubscriptionName() string {
+	return s.DestSubFullName
 }

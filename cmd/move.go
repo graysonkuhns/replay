@@ -12,11 +12,9 @@ import (
 
 	"os"
 
-	"cloud.google.com/go/pubsub"
-	pubsubapiv1 "cloud.google.com/go/pubsub/v2/apiv1"
-	"github.com/spf13/cobra"
-
+	"cloud.google.com/go/pubsub/v2"
 	pubsubpb "cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"
+	"github.com/spf13/cobra"
 )
 
 // moveCmd represents the move command
@@ -57,15 +55,6 @@ Each message is polled, published, and acknowledged sequentially.`,
 			log.Fatalf("Invalid subscription resource format: %s", source)
 		}
 		subProj := subParts[1]
-		subClient, err := pubsub.NewClient(ctx, subProj)
-		if err != nil {
-			log.Fatalf("Failed to create subscription client: %v", err)
-		}
-		defer subClient.Close()
-		sub := subClient.Subscription(subParts[3])
-		// Ensure sequential processing
-		sub.ReceiveSettings.NumGoroutines = 1
-		sub.ReceiveSettings.MaxOutstandingMessages = 1
 
 		// Extract topic project from full resource name
 		topicParts := strings.Split(destination, "/")
@@ -73,18 +62,33 @@ Each message is polled, published, and acknowledged sequentially.`,
 			log.Fatalf("Invalid topic resource format: %s", destination)
 		}
 		topicProj := topicParts[1]
-		topicClient, err := pubsub.NewClient(ctx, topicProj)
-		if err != nil {
-			log.Fatalf("Failed to create topic client: %v", err)
-		}
-		defer topicClient.Close()
-		topic := topicClient.Topic(topicParts[3])
 
-		// Create low-level Subscriber client for manual pull
-		subscriberClient, err := pubsubapiv1.NewSubscriptionAdminClient(ctx)
+		// Create clients for both subscription and topic operations
+		// Use the subscription project for the subscription client
+		subClient, err := pubsub.NewClient(ctx, subProj)
 		if err != nil {
-			log.Fatalf("Failed to create subscriber client: %v", err)
+			log.Fatalf("Failed to create subscription client: %v", err)
 		}
+		defer subClient.Close()
+
+		// Create topic client (may be different project)
+		var topicClient *pubsub.Client
+		if topicProj == subProj {
+			topicClient = subClient // Reuse same client if same project
+		} else {
+			topicClient, err = pubsub.NewClient(ctx, topicProj)
+			if err != nil {
+				log.Fatalf("Failed to create topic client: %v", err)
+			}
+			defer topicClient.Close()
+		}
+
+		// Create publisher for the destination topic
+		publisher := topicClient.Publisher(destination)
+		defer publisher.Stop()
+
+		// Use the SubscriptionAdminClient for manual pull operations
+		subscriberClient := subClient.SubscriptionAdminClient
 		defer subscriberClient.Close()
 
 		var mu sync.Mutex
@@ -127,7 +131,7 @@ Each message is polled, published, and acknowledged sequentially.`,
 
 			log.Printf("Pulled message %d", msgNum)
 			log.Printf("Publishing message %d", msgNum)
-			result := topic.Publish(ctx, &pubsub.Message{
+			result := publisher.Publish(ctx, &pubsub.Message{
 				Data:       receivedMsg.Message.Data,
 				Attributes: receivedMsg.Message.Attributes,
 			})
