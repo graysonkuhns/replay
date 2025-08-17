@@ -3,6 +3,7 @@ name: Nightly Integration Tests
 permissions:
   contents: read
   id-token: write
+  issues: write
 
 'on':
   schedule:
