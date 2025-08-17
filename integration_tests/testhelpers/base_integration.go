@@ -2,6 +2,7 @@ package testhelpers
 
 import (
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -11,31 +12,38 @@ import (
 // BaseIntegrationTest encapsulates common functionality for integration tests
 type BaseIntegrationTest struct {
 	*testing.T
-	Setup     *TestSetup
-	TestRunID string
+	Setup       *TestSetup
+	TestRunID   string
+	TestContext *TestContext
 }
 
 // NewBaseIntegrationTest creates a new BaseIntegrationTest instance
-func NewBaseIntegrationTest(t *testing.T, testRunID string) *BaseIntegrationTest {
+func NewBaseIntegrationTest(t *testing.T, testPrefix string) *BaseIntegrationTest {
 	t.Helper()
-	setup := SetupIntegrationTest(t)
+	// Generate a unique test run ID with the provided prefix
+	testRunID := fmt.Sprintf("%s_%s", testPrefix, GenerateTestRunID())
+	setup := SetupIntegrationTestWithContext(t, testRunID)
 	return &BaseIntegrationTest{
-		T:         t,
-		Setup:     setup,
-		TestRunID: testRunID,
+		T:           t,
+		Setup:       setup,
+		TestRunID:   testRunID,
+		TestContext: setup.TestContext,
 	}
 }
 
 // PublishMessages publishes messages to the source topic
 func (b *BaseIntegrationTest) PublishMessages(messages []pubsub.Message) error {
 	b.Helper()
-	// Add testRun attribute to all messages if not already present
+	// Add test context attributes to all messages
 	for i := range messages {
 		if messages[i].Attributes == nil {
 			messages[i].Attributes = make(map[string]string)
 		}
-		if _, exists := messages[i].Attributes["testRun"]; !exists {
-			messages[i].Attributes["testRun"] = b.TestRunID
+		// Add all test context attributes for comprehensive filtering
+		for k, v := range b.TestContext.GetAllAttributes() {
+			if _, exists := messages[i].Attributes[k]; !exists {
+				messages[i].Attributes[k] = v
+			}
 		}
 	}
 
@@ -181,16 +189,14 @@ func (b *BaseIntegrationTest) WaitForMessagePropagation() {
 	time.Sleep(30 * time.Second)
 }
 
-// CreateTestMessages creates standard test messages with the test run ID
+// CreateTestMessages creates standard test messages with test context attributes
 func (b *BaseIntegrationTest) CreateTestMessages(count int, prefix string) []pubsub.Message {
 	b.Helper()
 	var messages []pubsub.Message
 	for i := 1; i <= count; i++ {
 		messages = append(messages, pubsub.Message{
-			Data: []byte(fmt.Sprintf("%s %d", prefix, i)),
-			Attributes: map[string]string{
-				"testRun": b.TestRunID,
-			},
+			Data:       []byte(fmt.Sprintf("%s %d", prefix, i)),
+			Attributes: b.TestContext.GetAllAttributes(),
 		})
 	}
 	return messages
@@ -204,4 +210,27 @@ func (b *BaseIntegrationTest) PublishAndWait(messages []pubsub.Message) error {
 	}
 	b.WaitForMessagePropagation()
 	return nil
+}
+
+// CreateTempFile creates a temporary file with automatic tracking and cleanup
+func (b *BaseIntegrationTest) CreateTempFile(pattern string) (*os.File, error) {
+	b.Helper()
+	file, err := os.CreateTemp("", pattern)
+	if err != nil {
+		return nil, err
+	}
+
+	// Track the file for cleanup
+	b.TestContext.TrackTempFile(file.Name())
+
+	// Register cleanup
+	b.Cleanup(func() {
+		file.Close()
+		if err := os.Remove(file.Name()); err == nil {
+			// Untrack the file after successful cleanup
+			b.TestContext.UntrackTempFile(file.Name())
+		}
+	})
+
+	return file, nil
 }

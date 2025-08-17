@@ -6,7 +6,6 @@ import (
 	"log"
 	"math/rand"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
@@ -29,24 +28,22 @@ type TestSetup struct {
 	DestSubFullName     string
 	SourceTopicFullName string
 	DestTopicFullName   string
+	// Test context for isolation and tracking
+	TestContext *TestContext
 }
 
-// generateUniqueResourceName creates a unique resource name for test isolation
-func generateUniqueResourceName(baseName string, testName string) string {
-	// Clean test name to make it suitable for resource names
-	cleanTestName := strings.ReplaceAll(testName, "/", "_")
-	cleanTestName = strings.ReplaceAll(cleanTestName, " ", "_")
-	cleanTestName = strings.ToLower(cleanTestName)
-
-	// Add timestamp and random suffix for uniqueness
-	timestamp := time.Now().Unix()
-	randSuffix := rand.Intn(1000)
-
-	return fmt.Sprintf("%s_%s_%d_%d", baseName, cleanTestName, timestamp, randSuffix)
+// GenerateTestRunID generates a unique test run ID
+func GenerateTestRunID() string {
+	return fmt.Sprintf("test-run-%d-%d", time.Now().UnixNano(), rand.Intn(10000))
 }
 
 // SetupIntegrationTest creates a common setup for integration tests
 func SetupIntegrationTest(t *testing.T) *TestSetup {
+	return SetupIntegrationTestWithContext(t, GenerateTestRunID())
+}
+
+// SetupIntegrationTestWithContext creates a common setup with a specific test context
+func SetupIntegrationTestWithContext(t *testing.T, testRunID string) *TestSetup {
 	ctx := context.Background()
 	projectID := os.Getenv("GCP_PROJECT")
 	if projectID == "" {
@@ -58,12 +55,14 @@ func SetupIntegrationTest(t *testing.T) *TestSetup {
 		t.Fatalf("Failed to create PubSub client: %v", err)
 	}
 
-	// Generate unique resource names for this test
-	testName := t.Name()
-	sourceTopicName := generateUniqueResourceName("test-events-dead-letter", testName)
-	sourceSubName := generateUniqueResourceName("test-events-dead-letter-subscription", testName)
-	destTopicName := generateUniqueResourceName("test-events", testName)
-	destSubName := generateUniqueResourceName("test-events-subscription", testName)
+	// Create test context for isolation
+	testCtx := NewTestContext(t, testRunID)
+
+	// Generate unique resource names using test context
+	sourceTopicName := testCtx.GenerateResourceName("topic", "events_dead_letter")
+	sourceSubName := testCtx.GenerateResourceName("sub", "events_dead_letter")
+	destTopicName := testCtx.GenerateResourceName("topic", "events")
+	destSubName := testCtx.GenerateResourceName("sub", "events")
 
 	// Create full resource paths
 	sourceTopicFullName := fmt.Sprintf("projects/%s/topics/%s", projectID, sourceTopicName)
@@ -112,6 +111,12 @@ func SetupIntegrationTest(t *testing.T) *TestSetup {
 		t.Fatalf("Failed to create destination subscription %s: %v", destSubFullName, err)
 	}
 
+	// Track resources in test context
+	testCtx.TrackTopic(sourceTopicFullName)
+	testCtx.TrackTopic(destTopicFullName)
+	testCtx.TrackSubscription(sourceSubFullName)
+	testCtx.TrackSubscription(destSubFullName)
+
 	setup := &TestSetup{
 		Context:             ctx,
 		Client:              client,
@@ -124,6 +129,7 @@ func SetupIntegrationTest(t *testing.T) *TestSetup {
 		DestSubFullName:     destSubFullName,
 		SourceTopicFullName: sourceTopicFullName,
 		DestTopicFullName:   destTopicFullName,
+		TestContext:         testCtx,
 	}
 
 	// Setup cleanup to delete resources after test
@@ -137,12 +143,18 @@ func SetupIntegrationTest(t *testing.T) *TestSetup {
 			Subscription: sourceSubFullName,
 		}); err != nil {
 			log.Printf("Failed to delete source subscription %s: %v", sourceSubFullName, err)
+		} else {
+			// Untrack successfully deleted resource
+			testCtx.UntrackSubscription(sourceSubFullName)
 		}
 
 		if err := subAdmin.DeleteSubscription(ctx, &pubsubpb.DeleteSubscriptionRequest{
 			Subscription: destSubFullName,
 		}); err != nil {
 			log.Printf("Failed to delete destination subscription %s: %v", destSubFullName, err)
+		} else {
+			// Untrack successfully deleted resource
+			testCtx.UntrackSubscription(destSubFullName)
 		}
 
 		// Delete topics using v2 admin client
@@ -151,15 +163,27 @@ func SetupIntegrationTest(t *testing.T) *TestSetup {
 			Topic: sourceTopicFullName,
 		}); err != nil {
 			log.Printf("Failed to delete source topic %s: %v", sourceTopicFullName, err)
+		} else {
+			// Untrack successfully deleted resource
+			testCtx.UntrackTopic(sourceTopicFullName)
 		}
 
 		if err := topicAdmin.DeleteTopic(ctx, &pubsubpb.DeleteTopicRequest{
 			Topic: destTopicFullName,
 		}); err != nil {
 			log.Printf("Failed to delete destination topic %s: %v", destTopicFullName, err)
+		} else {
+			// Untrack successfully deleted resource
+			testCtx.UntrackTopic(destTopicFullName)
 		}
 
 		client.Close()
+
+		// Check for resource leaks
+		snapshot := testCtx.GetTrackedResources()
+		if snapshot.HasLeaks() {
+			t.Errorf("Resource leak detected in test %s:\n%s", t.Name(), snapshot.GetLeakSummary())
+		}
 	})
 
 	return setup

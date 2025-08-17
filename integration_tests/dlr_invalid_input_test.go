@@ -43,7 +43,7 @@ func TestDLRInvalidInputHandling(t *testing.T) {
 		"Message 2:",
 		"DLR Invalid Input Test message 1",
 		"DLR Invalid Input Test message 2",
-		"Attributes: map[testRun:dlr_invalid_input_test]",
+		fmt.Sprintf("Attributes: map[parallelIndex:%d testName:%s testRun:%s]", baseTest.TestContext.ParallelIndex, t.Name(), baseTest.TestRunID),
 		"Invalid input. Please enter 'm', 'd', or 'q'.", // Should appear 3 times total
 		"moved successfully",
 		"discarded (acked)",
