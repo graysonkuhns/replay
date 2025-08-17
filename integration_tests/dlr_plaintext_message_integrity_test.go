@@ -9,8 +9,6 @@ import (
 	"time"
 
 	"replay/integration_tests/testhelpers"
-
-	"cloud.google.com/go/pubsub"
 )
 
 func TestDLRPlaintextMessageIntegrity(t *testing.T) {
@@ -19,22 +17,21 @@ func TestDLRPlaintextMessageIntegrity(t *testing.T) {
 	setup := testhelpers.SetupIntegrationTest(t)
 	testRunValue := "dlr_plaintext_integrity_test"
 
-	// Prepare messages with unique plaintext body content.
+	// Prepare messages with unique plaintext body content using the builder.
 	numMessages := 3
 	sourceTopic := setup.GetSourceTopic()
-	var messages []pubsub.Message
-	var expectedBodies []string
 
+	builder := testhelpers.NewTestMessageBuilder().
+		WithAttributes(map[string]string{"testRun": testRunValue})
+
+	var expectedBodies []string
 	for i := 1; i <= numMessages; i++ {
 		body := fmt.Sprintf("DLR Plaintext Integrity Test message %d", i)
 		expectedBodies = append(expectedBodies, body)
-		messages = append(messages, pubsub.Message{
-			Data: []byte(body),
-			Attributes: map[string]string{
-				"testRun": testRunValue,
-			},
-		})
+		builder.WithTextMessage(body)
 	}
+
+	messages := builder.Build()
 
 	_, err := testhelpers.PublishTestMessages(setup.Context, sourceTopic, messages, "test-ordering-key")
 	if err != nil {

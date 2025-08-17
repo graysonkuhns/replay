@@ -2,7 +2,6 @@ package cmd_test
 
 import (
 	"bytes"
-	"crypto/rand"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -11,8 +10,6 @@ import (
 	"time"
 
 	"replay/integration_tests/testhelpers"
-
-	"cloud.google.com/go/pubsub"
 )
 
 func TestDLRBinaryMessageIntegrity(t *testing.T) {
@@ -21,45 +18,29 @@ func TestDLRBinaryMessageIntegrity(t *testing.T) {
 	setup := testhelpers.SetupIntegrationTest(t)
 	testRunValue := "dlr_binary_integrity_test"
 
-	// Prepare various binary message payloads
+	// Prepare various binary message payloads using the builder.
 	numMessages := 2
 	sourceTopic := setup.GetSourceTopic()
-	var messages []pubsub.Message
+
+	builder := testhelpers.NewTestMessageBuilder().
+		WithAttributes(map[string]string{"testRun": testRunValue})
+
 	var expectedBinaryData [][]byte
 
-	// 1. Small binary data (16 bytes)
-	smallBinary := make([]byte, 16)
-	if _, err := rand.Read(smallBinary); err != nil {
-		t.Fatalf("Failed to generate small binary data: %v", err)
-	}
-	expectedBinaryData = append(expectedBinaryData, smallBinary)
+	// 1. Small binary data (16 bytes) - random
+	builder.WithAttribute("messageIndex", "1").
+		WithBinaryMessage(16)
+	// Since we can't predict random data, we'll get it from the built messages
 
-	// 2. Medium binary data with specific pattern (1KB)
-	mediumBinary := make([]byte, 1024)
-	for i := 0; i < len(mediumBinary); i++ {
-		mediumBinary[i] = byte(i % 256)
-	}
-	expectedBinaryData = append(expectedBinaryData, mediumBinary)
+	// 2. Medium binary data with specific pattern (1KB) - deterministic
+	builder.WithAttribute("messageIndex", "2").
+		WithPatternBinaryMessage(1024)
 
-	// Create pubsub messages with binary payloads
-	for i, binaryData := range expectedBinaryData {
-		// For logging, show a base64 sample of the data
-		sampleSize := 32
-		if len(binaryData) < sampleSize {
-			sampleSize = len(binaryData)
-		}
-		sampleBase64 := base64.StdEncoding.EncodeToString(binaryData[:sampleSize])
+	messages := builder.Build()
 
-		messages = append(messages, pubsub.Message{
-			Data: binaryData,
-			Attributes: map[string]string{
-				"testRun":      testRunValue,
-				"contentType":  "application/octet-stream",
-				"messageIndex": fmt.Sprintf("%d", i+1),
-				"sizeBytes":    fmt.Sprintf("%d", len(binaryData)),
-				"dataSample":   sampleBase64, // Store sample for logging purposes
-			},
-		})
+	// Extract expected binary data from the built messages
+	for _, msg := range messages {
+		expectedBinaryData = append(expectedBinaryData, msg.Data)
 	}
 
 	_, err := testhelpers.PublishTestMessages(setup.Context, sourceTopic, messages, "binary-test-ordering-key")
