@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"cloud.google.com/go/pubsub"
+	"cloud.google.com/go/pubsub/v2"
 
 	"replay/integration_tests/testhelpers"
 )
@@ -22,7 +22,7 @@ func TestMoveStopsWhenSourceExhausted(t *testing.T) {
 	setup := testhelpers.SetupIntegrationTest(t)
 	// For this test, we move messages from the dead letter infrastructure to the normal events infrastructure.
 
-	sourceTopic := setup.GetSourceTopic()
+	sourceTopicName := setup.GetSourceTopicName()
 	numMessages := 3
 	testRunValue := "move_test"
 
@@ -36,20 +36,20 @@ func TestMoveStopsWhenSourceExhausted(t *testing.T) {
 		})
 	}
 
-	_, err := testhelpers.PublishTestMessages(setup.Context, sourceTopic, messages, "test-ordering-key")
+	_, err := testhelpers.PublishTestMessages(setup.Context, setup.Client, sourceTopicName, messages, "test-ordering-key")
 	if err != nil {
 		t.Fatalf("Failed to publish test messages: %v", err)
 	}
 
-	time.Sleep(20 * time.Second)
+	time.Sleep(30 * time.Second)
 	// log.Printf("Completed waiting for dead letter subscription to receive messages")
 
 	moveArgs := []string{
 		"move",
 		"--source-type", "GCP_PUBSUB_SUBSCRIPTION",
 		"--destination-type", "GCP_PUBSUB_TOPIC",
-		"--source", fmt.Sprintf("projects/%s/subscriptions/%s", setup.ProjectID, setup.SourceSubName),
-		"--destination", fmt.Sprintf("projects/%s/topics/%s", setup.ProjectID, setup.DestTopicName),
+		"--source", setup.GetSourceSubscriptionName(),
+		"--destination", setup.GetDestTopicName(),
 	}
 
 	actual, err := testhelpers.RunCLICommand(moveArgs)
@@ -60,7 +60,7 @@ func TestMoveStopsWhenSourceExhausted(t *testing.T) {
 
 	// Define expected output lines.
 	expectedLines := []string{
-		fmt.Sprintf("[TIMESTAMP] Moving messages from projects/%s/subscriptions/%s to projects/%s/topics/%s", setup.ProjectID, setup.SourceSubName, setup.ProjectID, setup.DestTopicName),
+		fmt.Sprintf("[TIMESTAMP] Moving messages from %s to %s", setup.GetSourceSubscriptionName(), setup.GetDestTopicName()),
 		"[TIMESTAMP] Pulled message 1",
 		"[TIMESTAMP] Publishing message 1",
 		"[TIMESTAMP] Published message 1 successfully",
@@ -81,11 +81,11 @@ func TestMoveStopsWhenSourceExhausted(t *testing.T) {
 
 	testhelpers.AssertCLIOutput(t, actual, expectedLines)
 
-	time.Sleep(20 * time.Second)
+	time.Sleep(30 * time.Second)
 	// log.Printf("Waiting for messages to propagate to destination subscription")
 
 	// log.Printf("Starting to receive messages from destination subscription: default-events-subscription")
-	received, err := testhelpers.PollMessages(setup.Context, setup.DestSub, testRunValue, numMessages)
+	received, err := testhelpers.PollMessages(setup.Context, setup.Client, setup.GetDestSubscriptionName(), testRunValue, numMessages)
 	if err != nil {
 		t.Fatalf("Error receiving messages: %v", err)
 	}
@@ -107,7 +107,7 @@ func TestMoveOperationWithCount(t *testing.T) {
 	numMessages := 5
 	moveCount := 3
 	testRunValue := "move_test_count"
-	sourceTopic := setup.GetSourceTopic()
+	sourceTopicName := setup.GetSourceTopicName()
 
 	var messages []pubsub.Message
 	for i := 1; i <= numMessages; i++ {
@@ -119,20 +119,20 @@ func TestMoveOperationWithCount(t *testing.T) {
 		})
 	}
 
-	_, err := testhelpers.PublishTestMessages(setup.Context, sourceTopic, messages, "test-ordering-key")
+	_, err := testhelpers.PublishTestMessages(setup.Context, setup.Client, sourceTopicName, messages, "test-ordering-key")
 	if err != nil {
 		t.Fatalf("Failed to publish test messages: %v", err)
 	}
 
-	time.Sleep(20 * time.Second)
+	time.Sleep(30 * time.Second)
 	// log.Printf("Completed waiting for messages to be available in the source subscription")
 
 	moveArgs := []string{
 		"move",
 		"--source-type", "GCP_PUBSUB_SUBSCRIPTION",
 		"--destination-type", "GCP_PUBSUB_TOPIC",
-		"--source", fmt.Sprintf("projects/%s/subscriptions/%s", setup.ProjectID, setup.SourceSubName),
-		"--destination", fmt.Sprintf("projects/%s/topics/%s", setup.ProjectID, setup.DestTopicName),
+		"--source", setup.GetSourceSubscriptionName(),
+		"--destination", setup.GetDestTopicName(),
 		"--count", fmt.Sprintf("%d", moveCount),
 	}
 
@@ -143,7 +143,7 @@ func TestMoveOperationWithCount(t *testing.T) {
 	// log.Printf("Move command executed with count %d", moveCount)
 
 	expectedLines := []string{
-		fmt.Sprintf("[TIMESTAMP] Moving messages from projects/%s/subscriptions/%s to projects/%s/topics/%s", setup.ProjectID, setup.SourceSubName, setup.ProjectID, setup.DestTopicName),
+		fmt.Sprintf("[TIMESTAMP] Moving messages from %s to %s", setup.GetSourceSubscriptionName(), setup.GetDestTopicName()),
 		"[TIMESTAMP] Pulled message 1",
 		"[TIMESTAMP] Publishing message 1",
 		"[TIMESTAMP] Published message 1 successfully",
@@ -164,9 +164,9 @@ func TestMoveOperationWithCount(t *testing.T) {
 
 	testhelpers.AssertCLIOutput(t, actual, expectedLines)
 
-	time.Sleep(20 * time.Second)
+	time.Sleep(30 * time.Second)
 	// log.Printf("Polling destination subscription for moved messages")
-	movedMessages, err := testhelpers.PollMessages(setup.Context, setup.DestSub, testRunValue, moveCount)
+	movedMessages, err := testhelpers.PollMessages(setup.Context, setup.Client, setup.GetDestSubscriptionName(), testRunValue, moveCount)
 	if err != nil {
 		t.Fatalf("Error receiving moved messages: %v", err)
 	}
@@ -175,7 +175,7 @@ func TestMoveOperationWithCount(t *testing.T) {
 	}
 
 	// log.Printf("Polling source subscription for remaining messages")
-	remainingMessages, err := testhelpers.PollMessages(setup.Context, setup.SourceSub, testRunValue, numMessages-moveCount)
+	remainingMessages, err := testhelpers.PollMessages(setup.Context, setup.Client, setup.GetSourceSubscriptionName(), testRunValue, numMessages-moveCount)
 	if err != nil {
 		t.Fatalf("Error receiving remaining messages: %v", err)
 	}
@@ -195,7 +195,7 @@ func TestMoveMessageBodyIntegrity(t *testing.T) {
 	// Prepare messages with unique body content.
 	numMessages := 3
 	testRunValue := "move_test_body_integrity"
-	sourceTopic := setup.GetSourceTopic()
+	sourceTopicName := setup.GetSourceTopicName()
 	var messages []pubsub.Message
 	var expectedBodies []string
 	for i := 1; i <= numMessages; i++ {
@@ -209,7 +209,7 @@ func TestMoveMessageBodyIntegrity(t *testing.T) {
 		})
 	}
 
-	_, err := testhelpers.PublishTestMessages(setup.Context, sourceTopic, messages, "test-ordering-key")
+	_, err := testhelpers.PublishTestMessages(setup.Context, setup.Client, sourceTopicName, messages, "test-ordering-key")
 	if err != nil {
 		t.Fatalf("Failed to publish test messages: %v", err)
 	}
@@ -221,8 +221,8 @@ func TestMoveMessageBodyIntegrity(t *testing.T) {
 		"move",
 		"--source-type", "GCP_PUBSUB_SUBSCRIPTION",
 		"--destination-type", "GCP_PUBSUB_TOPIC",
-		"--source", fmt.Sprintf("projects/%s/subscriptions/%s", setup.ProjectID, setup.SourceSubName),
-		"--destination", fmt.Sprintf("projects/%s/topics/%s", setup.ProjectID, setup.DestTopicName),
+		"--source", setup.GetSourceSubscriptionName(),
+		"--destination", setup.GetDestTopicName(),
 		"--count", fmt.Sprintf("%d", numMessages),
 	}
 	actual, err := testhelpers.RunCLICommand(moveArgs)
@@ -232,7 +232,7 @@ func TestMoveMessageBodyIntegrity(t *testing.T) {
 	t.Logf("Move command executed for body integrity test: %s", actual)
 
 	// Poll the destination subscription.
-	received, err := testhelpers.PollMessages(setup.Context, setup.DestSub, testRunValue, numMessages)
+	received, err := testhelpers.PollMessages(setup.Context, setup.Client, setup.GetDestSubscriptionName(), testRunValue, numMessages)
 	if err != nil {
 		t.Fatalf("Error receiving messages from destination: %v", err)
 	}

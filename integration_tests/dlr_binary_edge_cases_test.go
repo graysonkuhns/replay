@@ -9,7 +9,7 @@ import (
 
 	"replay/integration_tests/testhelpers"
 
-	"cloud.google.com/go/pubsub"
+	"cloud.google.com/go/pubsub/v2"
 )
 
 func TestDLRBinaryEdgeCases(t *testing.T) {
@@ -19,13 +19,13 @@ func TestDLRBinaryEdgeCases(t *testing.T) {
 	testRunValue := "dlr_binary_edge_cases_test"
 
 	// Purge any existing messages from the source subscription to ensure test isolation
-	if err := testhelpers.PurgeSubscription(setup.Context, setup.SourceSub); err != nil {
+	if err := testhelpers.PurgeSubscription(setup.Context, setup.Client, setup.GetSourceSubscriptionName()); err != nil {
 		t.Fatalf("Failed to purge source subscription: %v", err)
 	}
 
 	// Prepare edge case binary messages
 	numMessages := 4
-	sourceTopic := setup.GetSourceTopic()
+	sourceTopicName := setup.GetSourceTopicName()
 	var messages []pubsub.Message
 	var expectedBinaryData [][]byte
 	var descriptions []string
@@ -75,7 +75,7 @@ func TestDLRBinaryEdgeCases(t *testing.T) {
 		})
 	}
 
-	_, err := testhelpers.PublishTestMessages(setup.Context, sourceTopic, messages, "binary-edge-test-key")
+	_, err := testhelpers.PublishTestMessages(setup.Context, setup.Client, sourceTopicName, messages, "binary-edge-test-key")
 	if err != nil {
 		t.Fatalf("Failed to publish binary test messages: %v", err)
 	}
@@ -86,8 +86,8 @@ func TestDLRBinaryEdgeCases(t *testing.T) {
 		"dlr",
 		"--source-type", "GCP_PUBSUB_SUBSCRIPTION",
 		"--destination-type", "GCP_PUBSUB_TOPIC",
-		"--source", fmt.Sprintf("projects/%s/subscriptions/%s", setup.ProjectID, setup.SourceSubName),
-		"--destination", fmt.Sprintf("projects/%s/topics/%s", setup.ProjectID, setup.DestTopicName),
+		"--source", setup.GetSourceSubscriptionName(),
+		"--destination", setup.GetDestTopicName(),
 	}
 
 	// Simulate user inputs: "m" (move) for all messages
@@ -111,14 +111,25 @@ func TestDLRBinaryEdgeCases(t *testing.T) {
 	t.Logf("DLR command executed for binary edge cases test")
 
 	// Allow time for moved messages to propagate.
-	time.Sleep(20 * time.Second)
+	time.Sleep(40 * time.Second)
 
 	// Poll the destination subscription for moved messages.
-	received, err := testhelpers.PollMessages(setup.Context, setup.DestSub, testRunValue, numMessages)
+	received, err := testhelpers.PollMessages(setup.Context, setup.Client, setup.GetDestSubscriptionName(), testRunValue, numMessages)
 	if err != nil {
+		t.Logf("Error receiving messages from destination: %v", err)
+		// Log which messages were received
+		t.Logf("Received %d messages:", len(received))
+		for _, msg := range received {
+			t.Logf("  - Description: %s, Size: %d bytes", msg.Attributes["description"], len(msg.Data))
+		}
 		t.Fatalf("Error receiving messages from destination: %v", err)
 	}
 	if len(received) != numMessages {
+		// Log which messages were received
+		t.Logf("Expected %d messages, but got %d", numMessages, len(received))
+		for _, msg := range received {
+			t.Logf("  - Description: %s, Size: %d bytes", msg.Attributes["description"], len(msg.Data))
+		}
 		t.Fatalf("Expected %d messages in destination, got %d", numMessages, len(received))
 	}
 
@@ -145,7 +156,7 @@ func TestDLRBinaryEdgeCases(t *testing.T) {
 	}
 
 	// Verify that the source subscription is empty (all messages were moved)
-	sourceReceived, err := testhelpers.PollMessages(setup.Context, setup.SourceSub, testRunValue, 0)
+	sourceReceived, err := testhelpers.PollMessages(setup.Context, setup.Client, setup.GetSourceSubscriptionName(), testRunValue, 0)
 	if err != nil {
 		t.Fatalf("Error polling source subscription: %v", err)
 	}

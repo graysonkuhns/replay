@@ -3,7 +3,7 @@ module replay
 go 1.23.0
 
 require (
-	cloud.google.com/go/pubsub v1.50.0
+	cloud.google.com/go/pubsub v1.49.0
 	cloud.google.com/go/pubsub/v2 v2.0.0
 	github.com/spf13/cobra v1.9.1
 )

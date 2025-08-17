@@ -8,7 +8,7 @@ import (
 
 	"replay/integration_tests/testhelpers"
 
-	"cloud.google.com/go/pubsub"
+	"cloud.google.com/go/pubsub/v2"
 )
 
 func TestDLRWithPrettyJSON(t *testing.T) {
@@ -43,7 +43,7 @@ func TestDLRWithPrettyJSON(t *testing.T) {
 	}
 
 	// Publish the test message to the dead-letter topic
-	sourceTopic := setup.GetSourceTopic()
+	sourceTopicName := setup.GetSourceTopicName()
 	message := pubsub.Message{
 		Data: jsonBytes,
 		Attributes: map[string]string{
@@ -51,21 +51,21 @@ func TestDLRWithPrettyJSON(t *testing.T) {
 		},
 	}
 
-	_, err = testhelpers.PublishTestMessages(setup.Context, sourceTopic, []pubsub.Message{message}, "test-ordering-key")
+	_, err = testhelpers.PublishTestMessages(setup.Context, setup.Client, sourceTopicName, []pubsub.Message{message}, "test-ordering-key")
 	if err != nil {
 		t.Fatalf("Failed to publish test message: %v", err)
 	}
 
 	// Wait for the message to propagate to the dead-letter subscription.
-	time.Sleep(20 * time.Second)
+	time.Sleep(30 * time.Second)
 
 	// Prepare CLI arguments for the dlr command with pretty-json flag.
 	dlrArgs := []string{
 		"dlr",
 		"--source-type", "GCP_PUBSUB_SUBSCRIPTION",
 		"--destination-type", "GCP_PUBSUB_TOPIC",
-		"--source", fmt.Sprintf("projects/%s/subscriptions/%s", setup.ProjectID, setup.SourceSubName),
-		"--destination", fmt.Sprintf("projects/%s/topics/%s", setup.ProjectID, setup.DestTopicName),
+		"--source", setup.GetSourceSubscriptionName(),
+		"--destination", setup.GetDestTopicName(),
 		"--pretty-json", // Enable pretty JSON output
 	}
 
@@ -84,7 +84,7 @@ func TestDLRWithPrettyJSON(t *testing.T) {
 
 	// Define expected output substrings.
 	expectedLines := []string{
-		fmt.Sprintf("Starting DLR review from projects/%s/subscriptions/%s", setup.ProjectID, setup.SourceSubName),
+		fmt.Sprintf("Starting DLR review from %s", setup.GetSourceSubscriptionName()),
 		"",
 		"Message 1:",
 		"Data (pretty JSON):",
