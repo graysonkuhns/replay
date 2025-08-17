@@ -165,7 +165,7 @@ func (b *BaseIntegrationTest) GetMessagesFromDestination(expected int) ([]*pubsu
 	// Retry mechanism for improved reliability in nightly tests
 	const maxRetries = 3
 	const retryDelay = 5 * time.Second
-	
+
 	var lastErr error
 	for attempt := 1; attempt <= maxRetries; attempt++ {
 		received, err := PollMessages(
@@ -175,19 +175,19 @@ func (b *BaseIntegrationTest) GetMessagesFromDestination(expected int) ([]*pubsu
 			b.TestRunID,
 			expected,
 		)
-		
+
 		if err == nil {
 			return received, nil
 		}
-		
+
 		lastErr = err
 		if attempt < maxRetries {
-			b.Logf("Attempt %d failed to get %d messages from destination: %v. Retrying in %v...", 
+			b.Logf("Attempt %d failed to get %d messages from destination: %v. Retrying in %v...",
 				attempt, expected, err, retryDelay)
 			time.Sleep(retryDelay)
 		}
 	}
-	
+
 	return nil, fmt.Errorf("failed to get messages after %d attempts: %w", maxRetries, lastErr)
 }
 
