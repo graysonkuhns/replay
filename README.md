@@ -1,5 +1,11 @@
 # replay
 
+## ⚠️ Project Disclaimer
+
+**This project is not yet ready for use in production.**
+
+**This project is almost entirely written by AI.**
+
 ## Purpose
 
 This CLI tool helps engineers review and manage dead-lettered messages across multiple message brokers. 
