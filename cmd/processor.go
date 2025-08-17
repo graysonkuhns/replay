@@ -3,10 +3,14 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
 )
+
+// ErrQuit is returned when the user chooses to quit
+var ErrQuit = errors.New("user quit")
 
 // MessageHandler defines how to handle each message
 type MessageHandler interface {
@@ -46,7 +50,7 @@ func (p *MessageProcessor) Process(ctx context.Context) (int, error) {
 		// Handle pull errors
 		if err != nil {
 			if strings.Contains(err.Error(), "DeadlineExceeded") ||
-			if errors.Is(err, context.DeadlineExceeded) {
+				errors.Is(err, context.DeadlineExceeded) {
 				break
 			}
 			fmt.Fprintf(p.output, "Error during message pull: %v\n", err)
