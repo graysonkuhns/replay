@@ -38,7 +38,7 @@ func (b *BaseIntegrationTest) PublishMessages(messages []pubsub.Message) error {
 			messages[i].Attributes["testRun"] = b.TestRunID
 		}
 	}
-	
+
 	_, err := PublishTestMessages(
 		b.Setup.Context,
 		b.Setup.Client,
@@ -122,11 +122,11 @@ func (b *BaseIntegrationTest) VerifyMessagesInDestination(expected int) error {
 	if err != nil {
 		return fmt.Errorf("error polling destination subscription: %w", err)
 	}
-	
+
 	if len(received) != expected {
 		return fmt.Errorf("expected %d messages in destination, got %d", expected, len(received))
 	}
-	
+
 	return nil
 }
 
@@ -143,11 +143,11 @@ func (b *BaseIntegrationTest) VerifyMessagesInSource(expected int) error {
 	if err != nil {
 		return fmt.Errorf("error polling source subscription: %w", err)
 	}
-	
+
 	if len(received) != expected {
 		return fmt.Errorf("expected %d messages in source, got %d", expected, len(received))
 	}
-	
+
 	return nil
 }
 
