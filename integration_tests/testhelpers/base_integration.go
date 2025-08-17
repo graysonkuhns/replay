@@ -162,13 +162,33 @@ func (b *BaseIntegrationTest) VerifyMessagesInSource(expected int) error {
 // GetMessagesFromDestination retrieves messages from destination subscription
 func (b *BaseIntegrationTest) GetMessagesFromDestination(expected int) ([]*pubsub.Message, error) {
 	b.Helper()
-	return PollMessages(
-		b.Setup.Context,
-		b.Setup.Client,
-		b.Setup.GetDestSubscriptionName(),
-		b.TestRunID,
-		expected,
-	)
+	// Retry mechanism for improved reliability in nightly tests
+	const maxRetries = 3
+	const retryDelay = 5 * time.Second
+	
+	var lastErr error
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		received, err := PollMessages(
+			b.Setup.Context,
+			b.Setup.Client,
+			b.Setup.GetDestSubscriptionName(),
+			b.TestRunID,
+			expected,
+		)
+		
+		if err == nil {
+			return received, nil
+		}
+		
+		lastErr = err
+		if attempt < maxRetries {
+			b.Logf("Attempt %d failed to get %d messages from destination: %v. Retrying in %v...", 
+				attempt, expected, err, retryDelay)
+			time.Sleep(retryDelay)
+		}
+	}
+	
+	return nil, fmt.Errorf("failed to get messages after %d attempts: %w", maxRetries, lastErr)
 }
 
 // GetMessagesFromSource retrieves messages from source subscription
