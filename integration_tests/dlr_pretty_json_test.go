@@ -3,8 +3,6 @@ package cmd_test
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"os"
 	"testing"
 	"time"
 
@@ -72,19 +70,11 @@ func TestDLRWithPrettyJSON(t *testing.T) {
 	}
 
 	// Simulate user input: "m" for moving the message
-	origStdin := os.Stdin
-	r, w, err := os.Pipe()
+	simulator, err := testhelpers.NewStdinSimulator("m\n")
 	if err != nil {
-		t.Fatalf("Failed to create pipe for stdin: %v", err)
+		t.Fatalf("Failed to create stdin simulator: %v", err)
 	}
-	// Write simulated input and close the writer.
-	_, err = io.WriteString(w, "m\n")
-	if err != nil {
-		t.Fatalf("Failed to write simulated input: %v", err)
-	}
-	w.Close()
-	os.Stdin = r
-	defer func() { os.Stdin = origStdin }()
+	defer simulator.Cleanup()
 
 	// Run the dlr command.
 	actual, err := testhelpers.RunCLICommand(dlrArgs)
