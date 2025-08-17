@@ -3,8 +3,6 @@ package cmd_test
 import (
 	"context"
 	"fmt"
-	"io"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -60,22 +58,12 @@ func TestDLRQuitOperation(t *testing.T) {
 	}
 
 	// Simulate user inputs: "m" (move) for 2 messages, "d" (discard) for 1 message, then "q" (quit)
-	origStdin := os.Stdin
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("Failed to create pipe for stdin: %v", err)
-	}
-
-	// Write inputs: move, move, discard, quit
 	inputs := "m\nm\nd\nq\n"
-
-	_, err = io.WriteString(w, inputs)
+	simulator, err := testhelpers.NewStdinSimulator(inputs)
 	if err != nil {
-		t.Fatalf("Failed to write simulated input: %v", err)
+		t.Fatalf("Failed to create stdin simulator: %v", err)
 	}
-	w.Close()
-	os.Stdin = r
-	defer func() { os.Stdin = origStdin }()
+	defer simulator.Cleanup()
 
 	// Run the dlr command.
 	actual, err := testhelpers.RunCLICommand(dlrArgs)

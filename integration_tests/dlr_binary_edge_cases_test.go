@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"io"
-	"os"
 	"testing"
 	"time"
 
@@ -93,25 +91,16 @@ func TestDLRBinaryEdgeCases(t *testing.T) {
 	}
 
 	// Simulate user inputs: "m" (move) for all messages
-	origStdin := os.Stdin
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("Failed to create pipe for stdin: %v", err)
-	}
-
-	// Write "m" for each message to move them all
 	var inputs string
 	for i := 0; i < numMessages; i++ {
 		inputs += "m\n"
 	}
 
-	_, err = io.WriteString(w, inputs)
+	simulator, err := testhelpers.NewStdinSimulator(inputs)
 	if err != nil {
-		t.Fatalf("Failed to write simulated input: %v", err)
+		t.Fatalf("Failed to create stdin simulator: %v", err)
 	}
-	w.Close()
-	os.Stdin = r
-	defer func() { os.Stdin = origStdin }()
+	defer simulator.Cleanup()
 
 	// Run the dlr command.
 	_, err = testhelpers.RunCLICommand(dlrArgs)
