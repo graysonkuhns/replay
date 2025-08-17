@@ -34,3 +34,7 @@ issues:
     - path: _test\.go
       linters:
         - errcheck
+    # Exclude deprecation warnings for cloud.google.com/go/pubsub during migration period
+    - text: "cloud.google.com/go/pubsub.*is deprecated"
+      linters:
+        - staticcheck
