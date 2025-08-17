@@ -64,7 +64,7 @@ func (p *MessageProcessor) Process(ctx context.Context) (int, error) {
 		acknowledge, err := p.handler.HandleMessage(ctx, message, msgNum)
 		if err != nil {
 			// Check if it's a quit error
-			if strings.Contains(err.Error(), "quit") {
+			if errors.Is(err, ErrQuit) {
 				break
 			}
 			fmt.Fprintf(p.output, "Error handling message %d: %v\n", msgNum, err)
