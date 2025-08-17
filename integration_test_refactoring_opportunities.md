@@ -52,7 +52,7 @@ func (b *BaseIntegrationTest) VerifyMessagesInSource(expected int) error
 - Easier to add new tests
 - Single place to update common behavior
 
-## 3. Abstract stdin Simulation
+## 3. Abstract stdin Simulation [COMPLETED]
 
 ### Current Issue
 Every test that simulates user input has complex pipe management code:
@@ -83,7 +83,7 @@ func (s *StdinSimulator) Cleanup()
 - Easier to test interactive commands
 - Reduced chance of stdin leaks
 
-## 4. Improve Test Data Management
+## 4. Improve Test Data Management [COMPLETED]
 
 ### Current Issue
 Test data is created inline with hard-coded values scattered throughout tests.
@@ -286,12 +286,12 @@ Tests assume cleanup happens correctly but don't verify it.
 
 1. **High Priority** (Biggest impact, easiest to implement):
    - Replace hard-coded sleeps with smart polling (#1)
-   - Abstract stdin simulation (#3)
+   - ~~Abstract stdin simulation (#3)~~ [COMPLETED]
    - Better assertion helpers (#5)
 
 2. **Medium Priority** (Good value, moderate effort):
    - Create test suite base structure (#2)
-   - Improve test data management (#4)
+   - ~~Improve test data management (#4)~~ [COMPLETED]
    - Create command-specific test helpers (#7)
 
 3. **Lower Priority** (Nice to have, more effort):
