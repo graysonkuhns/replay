@@ -3,8 +3,6 @@ package cmd_test
 import (
 	"context"
 	"fmt"
-	"io"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -56,22 +54,12 @@ func TestDLRInvalidInputHandling(t *testing.T) {
 	// Simulate user inputs:
 	// For message 1: invalid input "x", then "m" (move)
 	// For message 2: invalid inputs "invalid", "123", then "d" (discard)
-	origStdin := os.Stdin
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("Failed to create pipe for stdin: %v", err)
-	}
-
-	// Write inputs with intentional invalid entries
 	inputs := "x\nm\ninvalid\n123\nd\n"
-
-	_, err = io.WriteString(w, inputs)
+	simulator, err := testhelpers.NewStdinSimulator(inputs)
 	if err != nil {
-		t.Fatalf("Failed to write simulated input: %v", err)
+		t.Fatalf("Failed to create stdin simulator: %v", err)
 	}
-	w.Close()
-	os.Stdin = r
-	defer func() { os.Stdin = origStdin }()
+	defer simulator.Cleanup()
 
 	// Run the dlr command.
 	actual, err := testhelpers.RunCLICommand(dlrArgs)
