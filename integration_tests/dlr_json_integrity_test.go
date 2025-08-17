@@ -2,9 +2,6 @@ package cmd_test
 
 import (
 	"encoding/json"
-	"io"
-	"os"
-	"fmt"
 	"testing"
 	"time"
 
