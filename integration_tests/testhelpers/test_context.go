@@ -3,6 +3,7 @@ package testhelpers
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -73,10 +74,12 @@ func NewTestContext(t *testing.T, testRunID string) *TestContext {
 	parallelIdx := atomic.AddInt32(&parallelIndexCounter, 1)
 
 	// Create a unique resource prefix combining test info and parallel index
-	resourcePrefix := fmt.Sprintf("test_%s_%d_%d",
+	// Include nanosecond timestamp and random component for maximum uniqueness
+	resourcePrefix := fmt.Sprintf("test_%s_%d_%d_%d",
 		sanitizeTestName(t.Name()),
-		time.Now().Unix(),
-		parallelIdx)
+		time.Now().UnixNano(),
+		parallelIdx,
+		rand.Intn(10000))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(func() {
