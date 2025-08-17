@@ -77,11 +77,11 @@ func TestMoveBinaryMessageIntegrity(t *testing.T) {
 	}
 
 	// Run the move command.
-	actual, err := baseTest.RunMoveCommand(numMessages)
+	_, err := baseTest.RunMoveCommand(numMessages)
 	if err != nil {
 		t.Fatalf("Error running CLI command: %v", err)
 	}
-	t.Logf("Move command executed for binary integrity test: %s", actual)
+	t.Logf("Move command executed for binary integrity test")
 
 	// Allow time for moved messages to propagate.
 	baseTest.WaitForMessagePropagation()
