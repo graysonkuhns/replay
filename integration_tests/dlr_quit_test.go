@@ -120,7 +120,7 @@ func TestDLRQuitOperation(t *testing.T) {
 	t.Logf("DLR command executed for quit operation test")
 
 	// Allow time for moved messages to propagate.
-	time.Sleep(20 * time.Second)
+	time.Sleep(30 * time.Second)
 
 	// Poll the destination subscription for moved messages.
 	// We expect exactly 2 messages to be moved.

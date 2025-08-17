@@ -104,7 +104,7 @@ func TestDLRInvalidInputHandling(t *testing.T) {
 	t.Logf("DLR command executed for invalid input handling test")
 
 	// Allow time for moved messages to propagate.
-	time.Sleep(20 * time.Second)
+	time.Sleep(30 * time.Second)
 
 	// Poll the destination subscription for moved messages.
 	// We expect exactly 1 message to be moved (message 1).
@@ -124,7 +124,7 @@ func TestDLRInvalidInputHandling(t *testing.T) {
 
 	// Verify that no messages remain in the source subscription by using a custom checking approach
 	// instead of using PollMessages which expects a specific number of messages
-	time.Sleep(20 * time.Second)
+	time.Sleep(30 * time.Second)
 
 	// Create a custom receiver function to check for any messages
 	var foundMessage bool

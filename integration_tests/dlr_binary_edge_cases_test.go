@@ -111,14 +111,25 @@ func TestDLRBinaryEdgeCases(t *testing.T) {
 	t.Logf("DLR command executed for binary edge cases test")
 
 	// Allow time for moved messages to propagate.
-	time.Sleep(20 * time.Second)
+	time.Sleep(40 * time.Second)
 
 	// Poll the destination subscription for moved messages.
 	received, err := testhelpers.PollMessages(setup.Context, setup.Client, setup.GetDestSubscriptionName(), testRunValue, numMessages)
 	if err != nil {
+		t.Logf("Error receiving messages from destination: %v", err)
+		// Log which messages were received
+		t.Logf("Received %d messages:", len(received))
+		for _, msg := range received {
+			t.Logf("  - Description: %s, Size: %d bytes", msg.Attributes["description"], len(msg.Data))
+		}
 		t.Fatalf("Error receiving messages from destination: %v", err)
 	}
 	if len(received) != numMessages {
+		// Log which messages were received
+		t.Logf("Expected %d messages, but got %d", numMessages, len(received))
+		for _, msg := range received {
+			t.Logf("  - Description: %s, Size: %d bytes", msg.Attributes["description"], len(msg.Data))
+		}
 		t.Fatalf("Expected %d messages in destination, got %d", numMessages, len(received))
 	}
 

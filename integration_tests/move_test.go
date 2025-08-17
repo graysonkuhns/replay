@@ -41,7 +41,7 @@ func TestMoveStopsWhenSourceExhausted(t *testing.T) {
 		t.Fatalf("Failed to publish test messages: %v", err)
 	}
 
-	time.Sleep(20 * time.Second)
+	time.Sleep(30 * time.Second)
 	// log.Printf("Completed waiting for dead letter subscription to receive messages")
 
 	moveArgs := []string{
@@ -81,7 +81,7 @@ func TestMoveStopsWhenSourceExhausted(t *testing.T) {
 
 	testhelpers.AssertCLIOutput(t, actual, expectedLines)
 
-	time.Sleep(20 * time.Second)
+	time.Sleep(30 * time.Second)
 	// log.Printf("Waiting for messages to propagate to destination subscription")
 
 	// log.Printf("Starting to receive messages from destination subscription: default-events-subscription")
@@ -124,7 +124,7 @@ func TestMoveOperationWithCount(t *testing.T) {
 		t.Fatalf("Failed to publish test messages: %v", err)
 	}
 
-	time.Sleep(20 * time.Second)
+	time.Sleep(30 * time.Second)
 	// log.Printf("Completed waiting for messages to be available in the source subscription")
 
 	moveArgs := []string{
@@ -164,7 +164,7 @@ func TestMoveOperationWithCount(t *testing.T) {
 
 	testhelpers.AssertCLIOutput(t, actual, expectedLines)
 
-	time.Sleep(20 * time.Second)
+	time.Sleep(30 * time.Second)
 	// log.Printf("Polling destination subscription for moved messages")
 	movedMessages, err := testhelpers.PollMessages(setup.Context, setup.Client, setup.GetDestSubscriptionName(), testRunValue, moveCount)
 	if err != nil {

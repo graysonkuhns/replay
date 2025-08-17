@@ -39,7 +39,7 @@ func TestDLROperation(t *testing.T) {
 	}
 
 	// Wait for the messages to propagate to the dead-letter subscription.
-	time.Sleep(20 * time.Second)
+	time.Sleep(30 * time.Second)
 
 	// Prepare CLI arguments for the dlr command.
 	dlrArgs := []string{
@@ -93,7 +93,7 @@ func TestDLROperation(t *testing.T) {
 	}
 
 	// Allow time for the moved message to propagate.
-	time.Sleep(20 * time.Second)
+	time.Sleep(30 * time.Second)
 
 	// Verify the message was published to the destination topic via its subscription.
 	received, err := testhelpers.PollMessages(setup.Context, setup.Client, setup.GetDestSubscriptionName(), testRunValue, 1)

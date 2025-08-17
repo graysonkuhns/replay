@@ -98,7 +98,7 @@ func TestMoveBinaryMessageIntegrity(t *testing.T) {
 	t.Logf("Move command executed for binary integrity test: %s", actual)
 
 	// Allow time for moved messages to propagate.
-	time.Sleep(20 * time.Second)
+	time.Sleep(30 * time.Second)
 
 	// Poll the destination subscription for moved messages.
 	received, err := testhelpers.PollMessages(setup.Context, setup.Client, setup.GetDestSubscriptionName(), testRunValue, numMessages)

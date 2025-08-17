@@ -132,7 +132,7 @@ func TestDLRJSONMessageIntegrity(t *testing.T) {
 	t.Logf("DLR command executed for JSON integrity test")
 
 	// Allow time for moved messages to propagate.
-	time.Sleep(20 * time.Second)
+	time.Sleep(30 * time.Second)
 
 	// Poll the destination subscription for moved messages.
 	received, err := testhelpers.PollMessages(setup.Context, setup.Client, setup.GetDestSubscriptionName(), testRunValue, numMessages)

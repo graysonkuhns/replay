@@ -57,7 +57,7 @@ func TestDLRWithPrettyJSON(t *testing.T) {
 	}
 
 	// Wait for the message to propagate to the dead-letter subscription.
-	time.Sleep(20 * time.Second)
+	time.Sleep(30 * time.Second)
 
 	// Prepare CLI arguments for the dlr command with pretty-json flag.
 	dlrArgs := []string{
