@@ -134,7 +134,7 @@ func (b *PubSubBroker) Acknowledge(ctx context.Context, ackID string) error {
 // Close cleans up resources
 func (b *PubSubBroker) Close() error {
 	b.publisher.Stop()
-	if b.subClient.SubscriptionAdminClient != nil {
+	if b.subClient != nil && b.subClient.SubscriptionAdminClient != nil {
 		b.subClient.SubscriptionAdminClient.Close()
 	}
 	if b.topicClient != b.subClient {
