@@ -46,7 +46,7 @@ func (p *MessageProcessor) Process(ctx context.Context) (int, error) {
 		// Handle pull errors
 		if err != nil {
 			if strings.Contains(err.Error(), "DeadlineExceeded") ||
-				strings.Contains(err.Error(), "context deadline exceeded") {
+			if errors.Is(err, context.DeadlineExceeded) {
 				break
 			}
 			fmt.Fprintf(p.output, "Error during message pull: %v\n", err)
