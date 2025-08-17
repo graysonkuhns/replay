@@ -6,7 +6,6 @@ import (
 	"log"
 	"math/rand"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
@@ -31,20 +30,6 @@ type TestSetup struct {
 	DestTopicFullName   string
 	// Test context for isolation and tracking
 	TestContext *TestContext
-}
-
-// generateUniqueResourceName creates a unique resource name for test isolation
-func generateUniqueResourceName(baseName string, testName string) string {
-	// Clean test name to make it suitable for resource names
-	cleanTestName := strings.ReplaceAll(testName, "/", "_")
-	cleanTestName = strings.ReplaceAll(cleanTestName, " ", "_")
-	cleanTestName = strings.ToLower(cleanTestName)
-
-	// Add timestamp and random suffix for uniqueness
-	timestamp := time.Now().Unix()
-	randSuffix := rand.Intn(1000)
-
-	return fmt.Sprintf("%s_%s_%d_%d", baseName, cleanTestName, timestamp, randSuffix)
 }
 
 // GenerateTestRunID generates a unique test run ID
