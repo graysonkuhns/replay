@@ -9,15 +9,15 @@ import (
 // It handles all the complex pipe management and cleanup automatically.
 //
 // Example usage:
-//   simulator, err := NewStdinSimulator("m\nd\nq\n")
-//   if err != nil {
-//       t.Fatalf("Failed to create stdin simulator: %v", err)
-//   }
-//   defer simulator.Cleanup()
-//   
-//   // Now run your CLI command that needs stdin input
-//   output, err := RunCLICommand(args)
 //
+//	simulator, err := NewStdinSimulator("m\nd\nq\n")
+//	if err != nil {
+//	    t.Fatalf("Failed to create stdin simulator: %v", err)
+//	}
+//	defer simulator.Cleanup()
+//
+//	// Now run your CLI command that needs stdin input
+//	output, err := RunCLICommand(args)
 type StdinSimulator struct {
 	original *os.File
 	reader   *os.File
