@@ -2,23 +2,21 @@ package cmd_test
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
-	"time"
 
 	"replay/integration_tests/testhelpers"
 )
 
 func TestDLRJSONMessageIntegrity(t *testing.T) {
 	t.Parallel()
-	setup := testhelpers.SetupIntegrationTest(t)
-	testRunValue := "dlr_json_integrity_test"
+	baseTest := testhelpers.NewBaseIntegrationTest(t, "dlr_json_integrity_test")
 
 	// Prepare JSON messages with various complexity levels using the builder.
 	numMessages := 3
-	sourceTopicName := setup.GetSourceTopicName()
 
 	builder := testhelpers.NewTestMessageBuilder().
-		WithAttributes(map[string]string{"testRun": testRunValue})
+		WithAttributes(map[string]string{"testRun": baseTest.TestRunID})
 
 	var expectedJSONs []string
 
@@ -96,35 +94,15 @@ func TestDLRJSONMessageIntegrity(t *testing.T) {
 
 	messages := builder.Build()
 
-	_, err = testhelpers.PublishTestMessages(setup.Context, setup.Client, sourceTopicName, messages, "json-test-ordering-key")
-	if err != nil {
+	if err := baseTest.PublishAndWait(messages); err != nil {
 		t.Fatalf("Failed to publish JSON test messages: %v", err)
-	}
-	time.Sleep(30 * time.Second) // Wait for messages to arrive in the subscription
-
-	// Prepare CLI arguments for the dlr command.
-	dlrArgs := []string{
-		"dlr",
-		"--source-type", "GCP_PUBSUB_SUBSCRIPTION",
-		"--destination-type", "GCP_PUBSUB_TOPIC",
-		"--source", setup.GetSourceSubscriptionName(),
-		"--destination", setup.GetDestTopicName(),
 	}
 
 	// Simulate user inputs: "m" (move) for all messages
-	var inputs string
-	for i := 0; i < numMessages; i++ {
-		inputs += "m\n"
-	}
-
-	simulator, err := testhelpers.NewStdinSimulator(inputs)
-	if err != nil {
-		t.Fatalf("Failed to create stdin simulator: %v", err)
-	}
-	defer simulator.Cleanup()
+	inputs := strings.Repeat("m\n", numMessages)
 
 	// Run the dlr command.
-	_, err = testhelpers.RunCLICommand(dlrArgs)
+	_, err = baseTest.RunDLRCommand(inputs)
 	if err != nil {
 		t.Fatalf("Error running CLI command: %v", err)
 	}
@@ -132,15 +110,12 @@ func TestDLRJSONMessageIntegrity(t *testing.T) {
 	t.Logf("DLR command executed for JSON integrity test")
 
 	// Allow time for moved messages to propagate.
-	time.Sleep(30 * time.Second)
+	baseTest.WaitForMessagePropagation()
 
 	// Poll the destination subscription for moved messages.
-	received, err := testhelpers.PollMessages(setup.Context, setup.Client, setup.GetDestSubscriptionName(), testRunValue, numMessages)
+	received, err := baseTest.GetMessagesFromDestination(numMessages)
 	if err != nil {
 		t.Fatalf("Error receiving messages from destination: %v", err)
-	}
-	if len(received) != numMessages {
-		t.Fatalf("Expected %d messages in destination, got %d", numMessages, len(received))
 	}
 
 	// Verify that each JSON message maintains its structure and values
@@ -187,12 +162,8 @@ func TestDLRJSONMessageIntegrity(t *testing.T) {
 	}
 
 	// Verify that the source subscription is empty (all messages were moved)
-	sourceReceived, err := testhelpers.PollMessages(setup.Context, setup.Client, setup.GetSourceSubscriptionName(), testRunValue, 0)
-	if err != nil {
-		t.Fatalf("Error polling source subscription: %v", err)
-	}
-	if len(sourceReceived) != 0 {
-		t.Fatalf("Expected 0 messages in source subscription, got %d", len(sourceReceived))
+	if err := baseTest.VerifyMessagesInSource(0); err != nil {
+		t.Fatalf("%v", err)
 	}
 
 	t.Logf("JSON message integrity verified for all %d messages moved using DLR operation", numMessages)

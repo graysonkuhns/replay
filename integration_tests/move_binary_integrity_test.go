@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"testing"
-	"time"
 
 	"replay/integration_tests/testhelpers"
 
@@ -16,12 +15,10 @@ import (
 func TestMoveBinaryMessageIntegrity(t *testing.T) {
 	t.Parallel()
 	// Test to verify that binary data remains unchanged when moving messages using the move operation.
-	setup := testhelpers.SetupIntegrationTest(t)
-	testRunValue := "move_binary_integrity_test"
+	baseTest := testhelpers.NewBaseIntegrationTest(t, "move_binary_integrity_test")
 
 	// Prepare different types of binary data
 	numMessages := 3
-	sourceTopicName := setup.GetSourceTopicName()
 	var messages []pubsub.Message
 	var expectedBinaryData [][]byte
 
@@ -66,7 +63,7 @@ func TestMoveBinaryMessageIntegrity(t *testing.T) {
 		messages = append(messages, pubsub.Message{
 			Data: binaryData,
 			Attributes: map[string]string{
-				"testRun":      testRunValue,
+				"testRun":      baseTest.TestRunID,
 				"contentType":  "application/octet-stream",
 				"messageIndex": fmt.Sprintf("%d", i+1),
 				"sizeBytes":    fmt.Sprintf("%d", len(binaryData)),
@@ -75,38 +72,24 @@ func TestMoveBinaryMessageIntegrity(t *testing.T) {
 		})
 	}
 
-	_, err := testhelpers.PublishTestMessages(setup.Context, setup.Client, sourceTopicName, messages, "binary-move-test-key")
-	if err != nil {
+	if err := baseTest.PublishAndWait(messages); err != nil {
 		t.Fatalf("Failed to publish binary test messages: %v", err)
 	}
-	time.Sleep(30 * time.Second) // Wait for messages to arrive in the subscription
 
 	// Run the move command.
-	moveArgs := []string{
-		"move",
-		"--source-type", "GCP_PUBSUB_SUBSCRIPTION",
-		"--destination-type", "GCP_PUBSUB_TOPIC",
-		"--source", setup.GetSourceSubscriptionName(),
-		"--destination", setup.GetDestTopicName(),
-		"--count", fmt.Sprintf("%d", numMessages),
-	}
-
-	actual, err := testhelpers.RunCLICommand(moveArgs)
+	actual, err := baseTest.RunMoveCommand(numMessages)
 	if err != nil {
 		t.Fatalf("Error running CLI command: %v", err)
 	}
 	t.Logf("Move command executed for binary integrity test: %s", actual)
 
 	// Allow time for moved messages to propagate.
-	time.Sleep(30 * time.Second)
+	baseTest.WaitForMessagePropagation()
 
 	// Poll the destination subscription for moved messages.
-	received, err := testhelpers.PollMessages(setup.Context, setup.Client, setup.GetDestSubscriptionName(), testRunValue, numMessages)
+	received, err := baseTest.GetMessagesFromDestination(numMessages)
 	if err != nil {
 		t.Fatalf("Error receiving messages from destination: %v", err)
-	}
-	if len(received) != numMessages {
-		t.Fatalf("Expected %d messages in destination, got %d", numMessages, len(received))
 	}
 
 	// Verify that each binary message maintains its data integrity
@@ -125,12 +108,8 @@ func TestMoveBinaryMessageIntegrity(t *testing.T) {
 	}
 
 	// Verify that the source subscription is empty
-	sourceReceived, err := testhelpers.PollMessages(setup.Context, setup.Client, setup.GetSourceSubscriptionName(), testRunValue, 0)
-	if err != nil {
-		t.Fatalf("Error polling source subscription: %v", err)
-	}
-	if len(sourceReceived) != 0 {
-		t.Fatalf("Expected 0 messages in source subscription, got %d", len(sourceReceived))
+	if err := baseTest.VerifyMessagesInSource(0); err != nil {
+		t.Fatalf("%v", err)
 	}
 
 	t.Logf("Binary message integrity verified for all %d messages moved using move operation", numMessages)

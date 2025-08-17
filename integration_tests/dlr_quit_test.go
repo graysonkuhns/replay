@@ -8,72 +8,38 @@ import (
 	"time"
 
 	"replay/integration_tests/testhelpers"
-
-	"cloud.google.com/go/pubsub/v2"
 )
 
 func TestDLRQuitOperation(t *testing.T) {
 	t.Parallel()
 	// Test to verify that the DLR operation correctly handles the quit command
-	setup := testhelpers.SetupIntegrationTest(t)
-	testRunValue := "dlr_quit_test"
+	baseTest := testhelpers.NewBaseIntegrationTest(t, "dlr_quit_test")
 
 	// Purge any existing messages from the source subscription to ensure test isolation
-	if err := testhelpers.PurgeSubscription(setup.Context, setup.Client, setup.GetSourceSubscriptionName()); err != nil {
+	if err := testhelpers.PurgeSubscription(baseTest.Setup.Context, baseTest.Setup.Client, baseTest.Setup.GetSourceSubscriptionName()); err != nil {
 		t.Fatalf("Failed to purge source subscription: %v", err)
 	}
 
 	// Prepare 4 messages with unique body content.
 	numMessages := 4
-	sourceTopicName := setup.GetSourceTopicName()
-	var messages []pubsub.Message
-	orderingKey := "test-ordering-key"
+	messages := baseTest.CreateTestMessages(numMessages, "DLR Quit Test message")
 
-	for i := 1; i <= numMessages; i++ {
-		body := fmt.Sprintf("DLR Quit Test message %d", i)
-		messages = append(messages, pubsub.Message{
-			Data: []byte(body),
-			Attributes: map[string]string{
-				"testRun": testRunValue,
-			},
-		})
-	}
-
-	_, err := testhelpers.PublishTestMessages(setup.Context, setup.Client, sourceTopicName, messages, orderingKey)
-	if err != nil {
-		t.Fatalf("Failed to publish test messages with ordering key: %v", err)
-	}
-
-	// Suppress logs to avoid interfering with parallel test output
-	// log.Printf("Published %d messages with ordering key: %s", numMessages, orderingKey)
-	time.Sleep(30 * time.Second) // Wait for messages to arrive in the subscription
-
-	// Prepare CLI arguments for the dlr command.
-	dlrArgs := []string{
-		"dlr",
-		"--source-type", "GCP_PUBSUB_SUBSCRIPTION",
-		"--destination-type", "GCP_PUBSUB_TOPIC",
-		"--source", setup.GetSourceSubscriptionName(),
-		"--destination", setup.GetDestTopicName(),
+	if err := baseTest.PublishAndWait(messages); err != nil {
+		t.Fatalf("Failed to publish test messages: %v", err)
 	}
 
 	// Simulate user inputs: "m" (move) for 2 messages, "d" (discard) for 1 message, then "q" (quit)
 	inputs := "m\nm\nd\nq\n"
-	simulator, err := testhelpers.NewStdinSimulator(inputs)
-	if err != nil {
-		t.Fatalf("Failed to create stdin simulator: %v", err)
-	}
-	defer simulator.Cleanup()
 
 	// Run the dlr command.
-	actual, err := testhelpers.RunCLICommand(dlrArgs)
+	actual, err := baseTest.RunDLRCommand(inputs)
 	if err != nil {
 		t.Fatalf("Error running CLI command: %v", err)
 	}
 
 	// Instead of checking exact order, verify the structure and key operations
 	// We expect 4 messages to be presented, with actions: move, move, discard, quit
-	if !strings.Contains(actual, fmt.Sprintf("Starting DLR review from %s", setup.GetSourceSubscriptionName())) {
+	if !strings.Contains(actual, fmt.Sprintf("Starting DLR review from %s", baseTest.Setup.GetSourceSubscriptionName())) {
 		t.Fatalf("Expected DLR start message not found in output")
 	}
 
@@ -120,16 +86,13 @@ func TestDLRQuitOperation(t *testing.T) {
 	t.Logf("DLR command executed for quit operation test")
 
 	// Allow time for moved messages to propagate.
-	time.Sleep(30 * time.Second)
+	baseTest.WaitForMessagePropagation()
 
 	// Poll the destination subscription for moved messages.
 	// We expect exactly 2 messages to be moved.
-	received, err := testhelpers.PollMessages(setup.Context, setup.Client, setup.GetDestSubscriptionName(), testRunValue, 2)
+	received, err := baseTest.GetMessagesFromDestination(2)
 	if err != nil {
 		t.Fatalf("Error receiving messages from destination: %v", err)
-	}
-	if len(received) != 2 {
-		t.Fatalf("Expected 2 messages in destination, got %d", len(received))
 	}
 
 	// Verify that moved messages are from our test set
@@ -146,9 +109,9 @@ func TestDLRQuitOperation(t *testing.T) {
 	// Verify that one message remains in the source subscription
 	// We expect exactly 1 message to remain in the source subscription after processing.
 	// Use a longer timeout context for this specific polling operation
-	pollCtx, pollCancel := context.WithTimeout(setup.Context, 60*time.Second)
+	pollCtx, pollCancel := context.WithTimeout(baseTest.Setup.Context, 60*time.Second)
 	defer pollCancel()
-	sourceReceived, err := testhelpers.PollMessages(pollCtx, setup.Client, setup.GetSourceSubscriptionName(), testRunValue, 1)
+	sourceReceived, err := testhelpers.PollMessages(pollCtx, baseTest.Setup.Client, baseTest.Setup.GetSourceSubscriptionName(), baseTest.TestRunID, 1)
 
 	if err != nil {
 		t.Fatalf("Error polling source subscription: %v", err)
