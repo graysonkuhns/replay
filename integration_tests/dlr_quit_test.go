@@ -15,7 +15,7 @@ import (
 func TestDLRQuitOperation(t *testing.T) {
 	t.Parallel()
 	// Test to verify that the DLR operation correctly handles the quit command
-	baseTest := testhelpers.NewBaseIntegrationTest(t, "dlr_quit_test")
+	baseTest := testhelpers.NewBaseIntegrationTest(t, "dlr_quit")
 
 	// Purge any existing messages from the source subscription to ensure test isolation
 	if err := testhelpers.PurgeSubscription(baseTest.Setup.Context, baseTest.Setup.Client, baseTest.Setup.GetSourceSubscriptionName()); err != nil {
