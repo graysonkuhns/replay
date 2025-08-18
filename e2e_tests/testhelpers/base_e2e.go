@@ -192,7 +192,7 @@ func (b *BaseE2ETest) GetMessagesFromDestination(expected int) ([]*pubsub.Messag
 	b.Helper()
 	// Retry mechanism for improved reliability in nightly tests
 	const maxRetries = 3
-	const retryDelay = 5 * time.Second
+	const retryDelay = 10 * time.Second // Increased from 5s to match VerifyMessagesInDestination
 
 	var lastErr error
 	for attempt := 1; attempt <= maxRetries; attempt++ {
