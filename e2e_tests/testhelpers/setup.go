@@ -11,6 +11,8 @@ import (
 
 	"cloud.google.com/go/pubsub/v2"
 	pubsubpb "cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/durationpb"
 )
 
@@ -76,7 +78,12 @@ func SetupE2ETestWithContext(t *testing.T, testRunID string) *TestSetup {
 		Name: sourceTopicFullName,
 	})
 	if err != nil {
-		t.Fatalf("Failed to create source topic %s: %v", sourceTopicFullName, err)
+		// Check if error is because topic already exists
+		if status, ok := status.FromError(err); ok && status.Code() == codes.AlreadyExists {
+			log.Printf("Topic %s already exists, continuing", sourceTopicFullName)
+		} else {
+			t.Fatalf("Failed to create source topic %s: %v", sourceTopicFullName, err)
+		}
 	}
 	// Suppress creation logs to avoid interfering with parallel test output
 
@@ -84,7 +91,12 @@ func SetupE2ETestWithContext(t *testing.T, testRunID string) *TestSetup {
 		Name: destTopicFullName,
 	})
 	if err != nil {
-		t.Fatalf("Failed to create destination topic %s: %v", destTopicFullName, err)
+		// Check if error is because topic already exists
+		if status, ok := status.FromError(err); ok && status.Code() == codes.AlreadyExists {
+			log.Printf("Topic %s already exists, continuing", destTopicFullName)
+		} else {
+			t.Fatalf("Failed to create destination topic %s: %v", destTopicFullName, err)
+		}
 	}
 
 	// Create subscriptions using v2 admin client
@@ -97,7 +109,12 @@ func SetupE2ETestWithContext(t *testing.T, testRunID string) *TestSetup {
 		MessageRetentionDuration: durationpb.New(604800 * time.Second), // 7 days default
 	})
 	if err != nil {
-		t.Fatalf("Failed to create source subscription %s: %v", sourceSubFullName, err)
+		// Check if error is because subscription already exists
+		if status, ok := status.FromError(err); ok && status.Code() == codes.AlreadyExists {
+			log.Printf("Subscription %s already exists, continuing", sourceSubFullName)
+		} else {
+			t.Fatalf("Failed to create source subscription %s: %v", sourceSubFullName, err)
+		}
 	}
 
 	_, err = subAdmin.CreateSubscription(ctx, &pubsubpb.Subscription{
@@ -108,7 +125,12 @@ func SetupE2ETestWithContext(t *testing.T, testRunID string) *TestSetup {
 		MessageRetentionDuration: durationpb.New(604800 * time.Second), // 7 days default
 	})
 	if err != nil {
-		t.Fatalf("Failed to create destination subscription %s: %v", destSubFullName, err)
+		// Check if error is because subscription already exists
+		if status, ok := status.FromError(err); ok && status.Code() == codes.AlreadyExists {
+			log.Printf("Subscription %s already exists, continuing", destSubFullName)
+		} else {
+			t.Fatalf("Failed to create destination subscription %s: %v", destSubFullName, err)
+		}
 	}
 
 	// Track resources in test context

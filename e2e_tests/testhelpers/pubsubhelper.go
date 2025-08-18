@@ -98,10 +98,14 @@ func PublishTestMessages(ctx context.Context, client *pubsub.Client, topicName s
 // PollMessages polls messages from a subscription and verifies the expected count.
 func PollMessages(ctx context.Context, client *pubsub.Client, subscriptionName string, testRunValue string, expectedCount int) ([]*pubsub.Message, error) {
 	var received []*pubsub.Message
-	cctx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	// Increase timeout for better reliability with slower message propagation
+	cctx, cancel := context.WithTimeout(ctx, 90*time.Second)
 	defer cancel()
 
 	subscriber := client.Subscriber(subscriptionName)
+	// Set MaxOutstandingMessages to ensure we can receive all expected messages
+	subscriber.ReceiveSettings.MaxOutstandingMessages = expectedCount + 10
+
 	err := subscriber.Receive(cctx, func(ctx context.Context, m *pubsub.Message) {
 		if m.Attributes["testRun"] == testRunValue {
 			// Suppress logs to avoid interfering with parallel test output

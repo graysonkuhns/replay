@@ -120,43 +120,71 @@ func (b *BaseE2ETest) RunMoveCommandWithArgs(args []string) (string, error) {
 // VerifyMessagesInDestination polls and verifies messages in destination subscription
 func (b *BaseE2ETest) VerifyMessagesInDestination(expected int) error {
 	b.Helper()
-	received, err := PollMessages(
-		b.Setup.Context,
-		b.Setup.Client,
-		b.Setup.GetDestSubscriptionName(),
-		b.TestRunID,
-		expected,
-	)
-	if err != nil {
-		return fmt.Errorf("error polling destination subscription: %w", err)
+	// Add retry logic for improved reliability
+	const maxRetries = 3
+	const retryDelay = 10 * time.Second
+
+	var lastErr error
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		received, err := PollMessages(
+			b.Setup.Context,
+			b.Setup.Client,
+			b.Setup.GetDestSubscriptionName(),
+			b.TestRunID,
+			expected,
+		)
+		if err == nil && len(received) == expected {
+			return nil
+		}
+
+		if err != nil {
+			lastErr = fmt.Errorf("error polling destination subscription: %w", err)
+		} else {
+			lastErr = fmt.Errorf("expected %d messages in destination, got %d", expected, len(received))
+		}
+
+		if attempt < maxRetries {
+			b.Logf("Attempt %d failed: %v. Retrying in %v...", attempt, lastErr, retryDelay)
+			time.Sleep(retryDelay)
+		}
 	}
 
-	if len(received) != expected {
-		return fmt.Errorf("expected %d messages in destination, got %d", expected, len(received))
-	}
-
-	return nil
+	return fmt.Errorf("failed after %d attempts: %w", maxRetries, lastErr)
 }
 
 // VerifyMessagesInSource polls and verifies messages in source subscription
 func (b *BaseE2ETest) VerifyMessagesInSource(expected int) error {
 	b.Helper()
-	received, err := PollMessages(
-		b.Setup.Context,
-		b.Setup.Client,
-		b.Setup.GetSourceSubscriptionName(),
-		b.TestRunID,
-		expected,
-	)
-	if err != nil {
-		return fmt.Errorf("error polling source subscription: %w", err)
+	// Add retry logic for improved reliability
+	const maxRetries = 3
+	const retryDelay = 10 * time.Second
+
+	var lastErr error
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		received, err := PollMessages(
+			b.Setup.Context,
+			b.Setup.Client,
+			b.Setup.GetSourceSubscriptionName(),
+			b.TestRunID,
+			expected,
+		)
+		if err == nil && len(received) == expected {
+			return nil
+		}
+
+		if err != nil {
+			lastErr = fmt.Errorf("error polling source subscription: %w", err)
+		} else {
+			lastErr = fmt.Errorf("expected %d messages in source, got %d", expected, len(received))
+		}
+
+		if attempt < maxRetries {
+			b.Logf("Attempt %d failed: %v. Retrying in %v...", attempt, lastErr, retryDelay)
+			time.Sleep(retryDelay)
+		}
 	}
 
-	if len(received) != expected {
-		return fmt.Errorf("expected %d messages in source, got %d", expected, len(received))
-	}
-
-	return nil
+	return fmt.Errorf("failed after %d attempts: %w", maxRetries, lastErr)
 }
 
 // GetMessagesFromDestination retrieves messages from destination subscription
