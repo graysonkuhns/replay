@@ -6,9 +6,11 @@ This document outlines refactoring opportunities identified in the production co
 
 The Replay CLI tool has significant opportunities for refactoring, primarily centered around eliminating code duplication between the `dlr` and `move` commands, introducing proper abstractions, and separating concerns. The current implementation has ~80% code duplication between the two main commands and tightly couples business logic with CLI framework code.
 
+**Update**: Significant progress has been made on the refactoring efforts. Code duplication has been eliminated through the introduction of shared abstractions (MessageBroker, MessageHandler, MessageProcessor), business logic has been separated from CLI handlers, and configuration management has been improved. The codebase is now more maintainable and extensible.
+
 ## Major Refactoring Opportunities
 
-### 1. Eliminate Massive Code Duplication
+### 1. Eliminate Massive Code Duplication [COMPLETED]
 
 **Current State:**
 - `cmd/dlr.go` and `cmd/move.go` share approximately 80% of their code
@@ -45,7 +47,13 @@ type MessageProcessor struct {
 }
 ```
 
-### 2. Extract Business Logic from Command Handlers
+**Implementation Status:**
+- MessageBroker interface created
+- CommandConfig struct implemented for shared configuration
+- MessageProcessor created to handle common message processing logic
+- Code duplication significantly reduced between dlr.go and move.go
+
+### 2. Extract Business Logic from Command Handlers [COMPLETED]
 
 **Current State:**
 - The `Run` functions in both commands are 100+ lines long
@@ -76,7 +84,13 @@ type InteractiveHandler struct {
 type AutomaticHandler struct{}
 ```
 
-### 3. Introduce Proper Abstraction for Message Brokers
+**Implementation Status:**
+- MessageHandler interface created with HandleMessage method
+- DLRHandler implemented for interactive dead-letter review
+- MoveHandler implemented for automatic message moving
+- Business logic separated from cobra command handlers
+
+### 3. Introduce Proper Abstraction for Message Brokers [PARTIALLY COMPLETED]
 
 **Current State:**
 - Direct use of Google Pub/Sub APIs throughout the code
@@ -102,7 +116,13 @@ type AWSKinesisBroker struct{}
 type KafkaBroker struct{}
 ```
 
-### 4. Improve Configuration Management
+**Implementation Status:**
+- MessageBroker interface created with Pull, Publish, and Acknowledge methods
+- PubSubBroker implemented for GCP Pub/Sub
+- BrokerFactory pattern not yet implemented
+- Other broker implementations (AWS, Kafka) not yet added
+
+### 4. Improve Configuration Management [COMPLETED]
 
 **Current State:**
 - Flags are parsed individually in each command
@@ -139,7 +159,13 @@ func ParseResource(resourceName string) (*Resource, error) {
 }
 ```
 
-### 5. Standardize Error Handling and Logging
+**Implementation Status:**
+- CommandConfig struct created with all necessary fields
+- ParseCommandConfig function implemented for extracting and validating configuration
+- AddCommonFlags function created for consistent flag handling across commands
+- Basic validation implemented for supported types
+
+### 5. Standardize Error Handling and Logging [PARTIALLY COMPLETED]
 
 **Current State:**
 - Inconsistent error handling patterns
@@ -167,6 +193,12 @@ type BrokerError struct {
     Cause     error
 }
 ```
+
+**Implementation Status:**
+- ErrQuit custom error implemented for user quit scenarios
+- Logging still uses fmt.Printf and log.Printf inconsistently
+- Structured logging interface not yet implemented
+- Additional custom error types not yet defined
 
 ### 6. Extract Constants and Magic Values
 
@@ -310,19 +342,25 @@ func (r *PluginRegistry) Register(plugin BrokerPlugin) {
 ## Implementation Priority
 
 1. **High Priority** (Immediate benefits, low risk):
-   - Extract shared code between dlr and move commands
-   - Create configuration structures
-   - Standardize error handling and logging
+   - ~~Extract shared code between dlr and move commands~~ [COMPLETED]
+   - ~~Create configuration structures~~ [COMPLETED]
+   - ~~Standardize error handling and logging~~ [PARTIALLY COMPLETED]
 
 2. **Medium Priority** (Significant benefits, moderate effort):
-   - Introduce message broker abstraction
-   - Separate business logic from command handlers
+   - ~~Introduce message broker abstraction~~ [PARTIALLY COMPLETED]
+   - ~~Separate business logic from command handlers~~ [COMPLETED]
    - Extract constants and magic values
 
 3. **Low Priority** (Future extensibility):
    - Plugin architecture
    - Retry and circuit breaker patterns
    - Alternative UI implementations
+
+4. **Completed Refactoring Items**:
+   - Code duplication eliminated through shared abstractions
+   - Business logic separated using MessageHandler interface
+   - Configuration management improved with CommandConfig
+   - Basic message broker abstraction implemented
 
 ## Migration Strategy
 

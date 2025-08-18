@@ -24,7 +24,7 @@ time.Sleep(70 * time.Second) // Wait for ack deadline to expire
 - More reliable (less timing-dependent)
 - Better debugging (can log what we're waiting for)
 
-## 2. Create a Test Suite Base Structure
+## 2. Create a Test Suite Base Structure [COMPLETED]
 
 ### Current Issue
 Each test file has similar setup patterns but implements them independently.
@@ -109,7 +109,7 @@ func (b *TestMessageBuilder) Build() []pubsub.Message
 - Clear intent in tests
 - Centralized test data generation
 
-## 5. Better Assertion Helpers
+## 5. Better Assertion Helpers [PARTIALLY COMPLETED]
 
 ### Current Issue
 Mix of custom assertions and standard `t.Fatal` calls with inconsistent error messages.
@@ -131,7 +131,11 @@ func AssertContainsInOrder(t *testing.T, output string, expectedStrings []string
 - Better debugging information
 - Reduced boilerplate in tests
 
-## 6. Parallel Test Isolation
+### Implementation Status
+- AssertCLIOutput implemented for comparing CLI output
+- Additional assertion helpers still needed for message content, JSON, and binary comparisons
+
+## 6. Parallel Test Isolation [COMPLETED]
 
 ### Current Issue
 Tests run in parallel but still have potential for interference through shared resources or timing.
@@ -147,6 +151,12 @@ Tests run in parallel but still have potential for interference through shared r
 - Ability to run more tests in parallel
 - Easier debugging of test failures
 - Protection against resource leaks
+
+### Implementation Status
+- TestContext implemented with resource tracking and test-specific attributes
+- StdinSimulator includes mutex protection for shared stdin resource
+- Resource name generation includes test-specific prefixes
+- Resource tracking for topics, subscriptions, temp files, and connections
 
 ## 7. Create Command-Specific Test Helpers
 
@@ -287,10 +297,10 @@ Tests assume cleanup happens correctly but don't verify it.
 1. **High Priority** (Biggest impact, easiest to implement):
    - Replace hard-coded sleeps with smart polling (#1)
    - ~~Abstract stdin simulation (#3)~~ [COMPLETED]
-   - Better assertion helpers (#5)
+   - ~~Better assertion helpers (#5)~~ [PARTIALLY COMPLETED]
 
 2. **Medium Priority** (Good value, moderate effort):
-   - Create test suite base structure (#2)
+   - ~~Create test suite base structure (#2)~~ [COMPLETED]
    - ~~Improve test data management (#4)~~ [COMPLETED]
    - Create command-specific test helpers (#7)
 
@@ -298,6 +308,9 @@ Tests assume cleanup happens correctly but don't verify it.
    - Implement test scenarios as data (#8)
    - Test organization (#11)
    - Configuration management (#10)
+
+4. **Completed Items**:
+   - ~~Parallel Test Isolation (#6)~~ [COMPLETED]
 
 ## Next Steps
 
