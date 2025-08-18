@@ -86,7 +86,7 @@ This checks:
 ### Manual Workflow Trigger
 
 To manually run nightly tests:
-1. Go to [Nightly Integration Tests workflow](https://github.com/graysonkuhns/replay/actions/workflows/nightly-e2e-tests.yml)
+1. Go to [Nightly E2E Tests workflow](https://github.com/graysonkuhns/replay/actions/workflows/nightly-e2e-tests.yml)
 2. Click "Run workflow" 
 3. Select branch (usually `main`)
 4. Click "Run workflow" to confirm
