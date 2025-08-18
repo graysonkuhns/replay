@@ -90,18 +90,25 @@ func TestDLRBinaryEdgeCases(t *testing.T) {
 
 	// Allow time for moved messages to propagate.
 	baseTest.WaitForMessagePropagation()
-	// Add extra wait for edge cases
+	// Add extra wait for edge cases - binary messages may need more time
+	baseTest.WaitForMessagePropagation()
+	// Additional wait specifically for binary edge cases
 	baseTest.WaitForMessagePropagation()
 
 	// Poll the destination subscription for moved messages.
 	received, err := baseTest.GetMessagesFromDestination(numMessages)
 	if err != nil {
 		t.Logf("Error receiving messages from destination: %v", err)
-		// Log which messages were received
-		partialReceived, _ := baseTest.GetMessagesFromDestination(0)
-		t.Logf("Received %d messages:", len(partialReceived))
-		for _, msg := range partialReceived {
-			t.Logf("  - Description: %s, Size: %d bytes", msg.Attributes["description"], len(msg.Data))
+		// Log which messages were received for debugging
+		partialReceived, partialErr := baseTest.GetMessagesFromDestination(0)
+		if partialErr != nil {
+			t.Logf("Could not retrieve any messages for debugging: %v", partialErr)
+		} else {
+			t.Logf("Received %d messages for debugging:", len(partialReceived))
+			for i, msg := range partialReceived {
+				t.Logf("  Message %d - Description: %s, Size: %d bytes, TestRun: %s",
+					i+1, msg.Attributes["description"], len(msg.Data), msg.Attributes["testRun"])
+			}
 		}
 		t.Fatalf("Error receiving messages from destination: %v", err)
 	}
