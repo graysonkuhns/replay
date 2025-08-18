@@ -40,7 +40,8 @@ jobs:
         run: |
           chmod +x ./run_tests.sh
           # Use default parallelism (4) for nightly runs since we have more time
-          PARALLEL_TESTS=1 ./run_tests.sh
+          # Capture test output to log file for issue creation
+          PARALLEL_TESTS=1 ./run_tests.sh 2>&1 | tee nightly-test-output.log
         timeout-minutes: 50
 
       - name: Upload test results
@@ -51,6 +52,7 @@ jobs:
           path: |
             *.log
             e2e_tests/*.log
+            nightly-test-output.log
           retention-days: 30
 
       - name: Notify on failure
@@ -58,8 +60,63 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const fs = require('fs');
             const { owner, repo } = context.repo;
             const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
+            
+            // Read test output log file
+            let testOutput = '';
+            let failureSummary = '';
+            try {
+              const logContent = fs.readFileSync('nightly-test-output.log', 'utf8');
+              
+              // Extract failure information from the log
+              const lines = logContent.split('\n');
+              const failureLines = [];
+              let failedTests = [];
+              let seenFailures = new Set();
+              
+              for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                
+                // Look for test failure patterns
+                if (line.includes('--- FAIL:')) {
+                  const testMatch = line.match(/--- FAIL: (\w+)/);
+                  if (testMatch && !seenFailures.has(testMatch[1])) {
+                    failedTests.push(testMatch[1]);
+                    seenFailures.add(testMatch[1]);
+                    failureLines.push(line);
+                  }
+                } else if (line.trim().startsWith('dlr_test.go:') || 
+                          line.trim().startsWith('move_test.go:') ||
+                          line.trim().startsWith('e2e_tests/') ||
+                          line.includes('Error:') || 
+                          line.includes('Failed to') ||
+                          line.includes('rpc error:') ||
+                          line.includes('panic:') ||
+                          line.includes('exit status')) {
+                  failureLines.push(line);
+                }
+              }
+              
+              // Limit the output to avoid GitHub API limits (GitHub issues have ~65k limit)
+              const maxLength = 3000;
+              if (failureLines.length > 0) {
+                testOutput = failureLines.join('\n');
+                if (testOutput.length > maxLength) {
+                  testOutput = '...\n' + testOutput.slice(testOutput.length - maxLength + 4);
+                }
+              }
+              
+              // Create failure summary
+              if (failedTests.length > 0) {
+                failureSummary = `**Failed Tests:** ${failedTests.join(', ')}\n\n`;
+              }
+              
+            } catch (error) {
+              console.log('Could not read test output log:', error.message);
+              testOutput = 'Test output log not available. Check the workflow artifacts for detailed logs.';
+            }
             
             // Create an issue if nightly tests fail
             const title = `Nightly E2E Tests Failed - ${new Date().toISOString().split('T')[0]}`;
@@ -69,7 +126,16 @@ jobs:
             
             **Run ID:** ${context.runId}
             
-            Please investigate the failure and fix any issues found.
+            ${failureSummary}**Test Failure Output:**
+            \`\`\`
+            ${testOutput}
+            \`\`\`
+            
+            **Next Steps:**
+            1. Check the complete logs in the workflow artifacts: [Test Results](${runUrl}#artifacts)
+            2. Review the failing tests and error messages above
+            3. Run the failing tests locally to reproduce the issue
+            4. Fix the underlying issue and verify with local test runs
             
             This issue was automatically created by the nightly E2E test workflow.`;
             
