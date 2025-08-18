@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
+	"replay/constants"
 )
 
 // ErrQuit is returned when the user chooses to quit
@@ -43,7 +45,7 @@ func (p *MessageProcessor) Process(ctx context.Context) (int, error) {
 	for {
 		// Pull a message
 		message, err := p.broker.Pull(ctx, PullConfig{
-			MaxMessages: 1,
+			MaxMessages: constants.DefaultBatchSize,
 			Timeout:     p.config.PollTimeout,
 		})
 
