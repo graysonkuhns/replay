@@ -5,13 +5,13 @@ import (
 	"strings"
 	"testing"
 
-	"replay/integration_tests/testhelpers"
+	"replay/e2e_tests/testhelpers"
 )
 
 func TestDLROperation(t *testing.T) {
 	t.Parallel()
-	// Set up integration test environment
-	baseTest := testhelpers.NewBaseIntegrationTest(t, "dlr_test")
+	// Set up e2e test environment
+	baseTest := testhelpers.NewBaseE2ETest(t, "dlr_test")
 
 	// Publish two test messages to the dead-letter topic: one to move and one to discard.
 	messages := baseTest.CreateTestMessages(2, "Test message")

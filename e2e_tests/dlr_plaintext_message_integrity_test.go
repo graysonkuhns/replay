@@ -5,13 +5,13 @@ import (
 	"strings"
 	"testing"
 
-	"replay/integration_tests/testhelpers"
+	"replay/e2e_tests/testhelpers"
 )
 
 func TestDLRPlaintextMessageIntegrity(t *testing.T) {
 	t.Parallel()
 	// Test to verify that the plaintext body content of moved messages remains unchanged when using the DLR operation.
-	baseTest := testhelpers.NewBaseIntegrationTest(t, "dlr_plaintext_integrity_test")
+	baseTest := testhelpers.NewBaseE2ETest(t, "dlr_plaintext_integrity_test")
 
 	// Prepare messages with unique plaintext body content using the builder.
 	numMessages := 3

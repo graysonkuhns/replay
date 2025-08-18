@@ -5,12 +5,12 @@ import (
 	"strings"
 	"testing"
 
-	"replay/integration_tests/testhelpers"
+	"replay/e2e_tests/testhelpers"
 )
 
 func TestDLRJSONMessageIntegrity(t *testing.T) {
 	t.Parallel()
-	baseTest := testhelpers.NewBaseIntegrationTest(t, "dlr_json_integrity_test")
+	baseTest := testhelpers.NewBaseE2ETest(t, "dlr_json_integrity_test")
 
 	// Prepare JSON messages with various complexity levels using the builder.
 	numMessages := 3

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"replay/integration_tests/testhelpers"
+	"replay/e2e_tests/testhelpers"
 
 	"cloud.google.com/go/pubsub/v2"
 )
@@ -15,7 +15,7 @@ import (
 func TestDLRInvalidInputHandling(t *testing.T) {
 	t.Parallel()
 	// Test to verify that the DLR operation correctly handles invalid input by asking again
-	baseTest := testhelpers.NewBaseIntegrationTest(t, "dlr_invalid_input_test")
+	baseTest := testhelpers.NewBaseE2ETest(t, "dlr_invalid_input_test")
 
 	// Prepare 2 messages with unique body content.
 	numMessages := 2

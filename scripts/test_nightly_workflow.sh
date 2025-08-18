@@ -19,9 +19,9 @@ echo "✅ GCP_PROJECT is set: $GCP_PROJECT"
 # Test 1: Verify workflow file syntax
 echo "🧪 Test 1: Checking workflow file syntax..."
 if command -v yq >/dev/null 2>&1; then
-    yq eval '.permissions.issues' .github/workflows/nightly-integration-tests.yml | grep -q "write" && echo "✅ Workflow permissions correctly set" || echo "❌ Workflow permissions not set correctly"
+    yq eval '.permissions.issues' .github/workflows/nightly-e2e-tests.yml | grep -q "write" && echo "✅ Workflow permissions correctly set" || echo "❌ Workflow permissions not set correctly"
 else
-    grep -q "issues: write" .github/workflows/nightly-integration-tests.yml && echo "✅ Workflow permissions correctly set" || echo "❌ Workflow permissions not set correctly"
+    grep -q "issues: write" .github/workflows/nightly-e2e-tests.yml && echo "✅ Workflow permissions correctly set" || echo "❌ Workflow permissions not set correctly"
 fi
 
 # Test 2: Verify Go code compiles
@@ -30,7 +30,7 @@ go build -o /tmp/replay-test . && echo "✅ Go code compiles successfully" || { 
 
 # Test 3: Verify test helpers compile
 echo "🧪 Test 3: Checking test helpers compilation..."
-go test -c ./integration_tests -o /tmp/integration-tests 2>/dev/null && echo "✅ Integration tests compile successfully" || { echo "❌ Integration tests compilation failed"; exit 1; }
+go test -c ./e2e_tests -o /tmp/e2e-tests 2>/dev/null && echo "✅ E2E tests compile successfully" || { echo "❌ E2E tests compilation failed"; exit 1; }
 
 # Test 4: Run a quick syntax check on all go files
 echo "🧪 Test 4: Running go vet..."
@@ -42,19 +42,19 @@ echo "🧪 Test 5: Testing CLI help output..."
 
 # Test 6: Test the retry mechanism in test helpers (syntax check only)
 echo "🧪 Test 6: Checking retry mechanism syntax..."
-grep -q "maxRetries.*=.*3" integration_tests/testhelpers/base_integration.go && echo "✅ Retry mechanism added" || echo "❌ Retry mechanism not found"
+grep -q "maxRetries.*=.*3" e2e_tests/testhelpers/base_e2e.go && echo "✅ Retry mechanism added" || echo "❌ Retry mechanism not found"
 
 echo ""
 echo "🎉 All checks passed! The nightly workflow components are ready."
 echo ""
 echo "💡 To manually trigger the nightly workflow for testing:"
-echo "   1. Go to: https://github.com/graysonkuhns/replay/actions/workflows/nightly-integration-tests.yml"  
+echo "   1. Go to: https://github.com/graysonkuhns/replay/actions/workflows/nightly-e2e-tests.yml"  
 echo "   2. Click 'Run workflow' button"
 echo "   3. Click 'Run workflow' to confirm"
 echo ""
 echo "⚠️  Note: The workflow requires GCP secrets to be configured in the repository settings."
 
 # Cleanup
-rm -f /tmp/replay-test /tmp/integration-tests
+rm -f /tmp/replay-test /tmp/e2e-tests
 
 echo "✅ Test complete!"

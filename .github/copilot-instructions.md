@@ -18,8 +18,8 @@ Always reference these instructions first and fallback to search or bash command
 - All formatting commands complete in under 5 seconds
 
 ### Testing
-- **CRITICAL**: This project has NO unit tests - only integration tests
-- Run integration tests: `./run_tests.sh` 
+- **CRITICAL**: This project has NO unit tests - only e2e tests
+- Run e2e tests: `./run_tests.sh` 
 - **NEVER CANCEL**: Integration tests take 45 minutes. Set timeout to 60+ minutes
 - Integration tests require `GCP_PROJECT` environment variable set
 - Tests create isolated GCP Pub/Sub resources and clean up automatically
@@ -84,7 +84,7 @@ The CLI provides two main commands:
 ### Code Structure
 - `main.go`: Entry point
 - `cmd/`: Cobra command definitions (root.go, move.go, dlr.go)
-- `integration_tests/`: All tests are integration tests requiring GCP
+- `e2e_tests/`: All tests are e2e tests requiring GCP
 - `tools/docgen/`: Documentation generation utility
 - `test_environment/`: Terraform configuration for shared test resources (optional)
 
@@ -98,7 +98,7 @@ The CLI provides two main commands:
 ├── go.sum  
 ├── main.go
 ├── cmd/
-├── integration_tests/
+├── e2e_tests/
 ├── docs/
 ├── tools/
 ├── scripts/
@@ -121,7 +121,7 @@ The CLI provides two main commands:
 - Use with caution - these delete ALL resources of the specified type
 
 ## Important Notes
-- Always ensure your changes work with the fast build cycle before running integration tests
+- Always ensure your changes work with the fast build cycle before running e2e tests
 - Integration tests are the primary validation method - there are no unit tests
 - The application requires GCP authentication via `gcloud auth application-default login`
 - Both move and dlr commands require valid GCP Pub/Sub resource names

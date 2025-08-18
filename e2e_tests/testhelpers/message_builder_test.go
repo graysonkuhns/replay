@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"replay/integration_tests/testhelpers"
+	"replay/e2e_tests/testhelpers"
 )
 
 func TestTestMessageBuilder(t *testing.T) {

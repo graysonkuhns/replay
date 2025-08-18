@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"replay/integration_tests/testhelpers"
+	"replay/e2e_tests/testhelpers"
 
 	"cloud.google.com/go/pubsub/v2"
 )
@@ -15,7 +15,7 @@ import (
 func TestDLRQuitOperation(t *testing.T) {
 	t.Parallel()
 	// Test to verify that the DLR operation correctly handles the quit command
-	baseTest := testhelpers.NewBaseIntegrationTest(t, "dlr_quit")
+	baseTest := testhelpers.NewBaseE2ETest(t, "dlr_quit")
 
 	// Purge any existing messages from the source subscription to ensure test isolation
 	if err := testhelpers.PurgeSubscription(baseTest.Setup.Context, baseTest.Setup.Client, baseTest.Setup.GetSourceSubscriptionName()); err != nil {
