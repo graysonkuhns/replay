@@ -26,10 +26,20 @@ The workflow requires these repository secrets:
 ## Automatic Issue Creation
 
 When nightly tests fail, the workflow automatically:
-1. Creates a GitHub issue with the failure details
-2. Tags it with `nightly-test-failure` and `bug` labels
-3. Includes the run URL and run ID for investigation
+1. Captures the full test output to a log file
+2. Creates a GitHub issue with comprehensive failure details including:
+   - List of failed tests
+   - Actual test failure output with error messages
+   - Run URL and run ID for investigation
+   - Links to complete logs in workflow artifacts
+3. Tags it with `nightly-test-failure` and `bug` labels
 4. Prevents duplicate issues for the same day
+
+The issue includes parsed failure output showing:
+- Test file names and line numbers where failures occurred
+- Error messages (authentication errors, timeouts, panics, etc.)
+- Exit status information
+- Actionable troubleshooting steps
 
 ## Test Reliability Features
 
