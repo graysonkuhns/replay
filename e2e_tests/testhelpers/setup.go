@@ -16,7 +16,7 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 )
 
-// TestSetup holds the common setup for integration tests
+// TestSetup holds the common setup for e2e tests
 type TestSetup struct {
 	Context         context.Context
 	Client          *pubsub.Client
@@ -39,13 +39,13 @@ func GenerateTestRunID() string {
 	return fmt.Sprintf("test-run-%d-%d", time.Now().UnixNano(), rand.Intn(10000))
 }
 
-// SetupIntegrationTest creates a common setup for integration tests
-func SetupIntegrationTest(t *testing.T) *TestSetup {
-	return SetupIntegrationTestWithContext(t, GenerateTestRunID())
+// SetupE2ETest creates a common setup for e2e tests
+func SetupE2ETest(t *testing.T) *TestSetup {
+	return SetupE2ETestWithContext(t, GenerateTestRunID())
 }
 
-// SetupIntegrationTestWithContext creates a common setup with a specific test context
-func SetupIntegrationTestWithContext(t *testing.T, testRunID string) *TestSetup {
+// SetupE2ETestWithContext creates a common setup with a specific test context
+func SetupE2ETestWithContext(t *testing.T, testRunID string) *TestSetup {
 	ctx := context.Background()
 	projectID := os.Getenv("GCP_PROJECT")
 	if projectID == "" {

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"testing"
 
-	"replay/integration_tests/testhelpers"
+	"replay/e2e_tests/testhelpers"
 
 	"cloud.google.com/go/pubsub/v2"
 )
@@ -15,7 +15,7 @@ import (
 func TestMoveBinaryMessageIntegrity(t *testing.T) {
 	t.Parallel()
 	// Test to verify that binary data remains unchanged when moving messages using the move operation.
-	baseTest := testhelpers.NewBaseIntegrationTest(t, "move_binary_integrity_test")
+	baseTest := testhelpers.NewBaseE2ETest(t, "move_binary_integrity_test")
 
 	// Prepare different types of binary data
 	numMessages := 3

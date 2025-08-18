@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"replay/integration_tests/testhelpers"
+	"replay/e2e_tests/testhelpers"
 
 	"cloud.google.com/go/pubsub/v2"
 )
@@ -14,7 +14,7 @@ import (
 func TestDLRWithPrettyJSON(t *testing.T) {
 	t.Parallel()
 	// Set up context and PubSub client.
-	baseTest := testhelpers.NewBaseIntegrationTest(t, "dlr_pretty_json_test")
+	baseTest := testhelpers.NewBaseE2ETest(t, "dlr_pretty_json_test")
 
 	// Create a JSON message for testing
 	jsonData := map[string]interface{}{

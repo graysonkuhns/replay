@@ -1,6 +1,6 @@
-# Integration Test Refactoring Opportunities
+# E2E Test Refactoring Opportunities
 
-This document outlines potential improvements to the integration test suite for the replay CLI tool. The analysis is based on examining the current test structure, patterns, and implementation details.
+This document outlines potential improvements to the e2e test suite for the replay CLI tool. The analysis is based on examining the current test structure, patterns, and implementation details.
 
 ## 1. Replace Hard-coded Sleeps with Smart Polling
 
@@ -30,20 +30,20 @@ time.Sleep(70 * time.Second) // Wait for ack deadline to expire
 Each test file has similar setup patterns but implements them independently.
 
 ### Recommended Approach
-Create a `BaseIntegrationTest` struct that encapsulates common functionality:
+Create a `BaseE2ETest` struct that encapsulates common functionality:
 
 ```go
-type BaseIntegrationTest struct {
+type BaseE2ETest struct {
     *testing.T
     Setup *testhelpers.TestSetup
     TestRunID string
 }
 
-func (b *BaseIntegrationTest) PublishMessages(messages []pubsub.Message) error
-func (b *BaseIntegrationTest) RunDLRCommand(inputs string) (string, error)
-func (b *BaseIntegrationTest) RunMoveCommand(count int) (string, error)
-func (b *BaseIntegrationTest) VerifyMessagesInDestination(expected int) error
-func (b *BaseIntegrationTest) VerifyMessagesInSource(expected int) error
+func (b *BaseE2ETest) PublishMessages(messages []pubsub.Message) error
+func (b *BaseE2ETest) RunDLRCommand(inputs string) (string, error)
+func (b *BaseE2ETest) RunMoveCommand(count int) (string, error)
+func (b *BaseE2ETest) VerifyMessagesInDestination(expected int) error
+func (b *BaseE2ETest) VerifyMessagesInSource(expected int) error
 ```
 
 ### Benefits
@@ -158,7 +158,7 @@ Create command-specific helpers:
 
 ```go
 type DLRTestHelper struct {
-    *BaseIntegrationTest
+    *BaseE2ETest
 }
 
 func (h *DLRTestHelper) RunWithActions(actions ...string) (string, error)
@@ -166,7 +166,7 @@ func (h *DLRTestHelper) VerifyMoveAction(messageContent string) error
 func (h *DLRTestHelper) VerifyDiscardAction(messageContent string) error
 
 type MoveTestHelper struct {
-    *BaseIntegrationTest
+    *BaseE2ETest
 }
 
 func (h *MoveTestHelper) RunWithCount(count int) (string, error)
@@ -251,7 +251,7 @@ func GetTestConfig() *TestConfig
 ## 11. Test Organization
 
 ### Current Issue
-All integration tests are in a single package with many files.
+All e2e tests are in a single package with many files.
 
 ### Recommended Approach
 - Group related tests into sub-packages (e.g., `dlr_tests`, `move_tests`)

@@ -1,13 +1,13 @@
-# Nightly Integration Tests
+# Nightly E2E Tests
 
 ## Overview
 
-The nightly integration tests run automatically at **2 AM UTC every day** via GitHub Actions. They provide comprehensive testing of the replay CLI tool with real GCP Pub/Sub resources.
+The nightly E2E tests run automatically at **2 AM UTC every day** via GitHub Actions. They provide comprehensive testing of the replay CLI tool with real GCP Pub/Sub resources.
 
 ## Workflow Details
 
 - **Schedule**: `'0 2 * * *'` (2 AM UTC daily)
-- **Workflow File**: `.github/workflows/nightly-integration-tests.yml`
+- **Workflow File**: `.github/workflows/nightly-e2e-tests.yml`
 - **Manual Trigger**: Available via GitHub Actions UI "workflow_dispatch"
 
 ## Required Permissions
@@ -33,7 +33,7 @@ When nightly tests fail, the workflow automatically:
 
 ## Test Reliability Features
 
-The integration tests include several reliability features:
+The e2e tests include several reliability features:
 
 ### Retry Mechanism
 - `GetMessagesFromDestination()` retries up to 3 times with 5-second delays
@@ -86,7 +86,7 @@ This checks:
 ### Manual Workflow Trigger
 
 To manually run nightly tests:
-1. Go to [Nightly Integration Tests workflow](https://github.com/graysonkuhns/replay/actions/workflows/nightly-integration-tests.yml)
+1. Go to [Nightly E2E Tests workflow](https://github.com/graysonkuhns/replay/actions/workflows/nightly-e2e-tests.yml)
 2. Click "Run workflow" 
 3. Select branch (usually `main`)
 4. Click "Run workflow" to confirm
@@ -101,7 +101,7 @@ Check workflow status:
 ## Development Guidelines
 
 ### Adding New Tests
-- Use `testhelpers.NewBaseIntegrationTest()` for consistent setup
+- Use `testhelpers.NewBaseE2ETest()` for consistent setup
 - Include proper cleanup in test teardown
 - Test with various message types (binary, JSON, plaintext)
 - Consider parallel execution implications

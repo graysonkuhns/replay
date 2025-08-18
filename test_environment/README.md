@@ -13,9 +13,9 @@
 * Update values in `terraform.tfvars` file
 * Install terraform modules - `terraform init`
 
-## Integration Tests
+## E2E Tests
 
-**Note:** As of the latest version, integration tests now create their own fresh GCP Pub/Sub resources (topics and subscriptions) for each test run. This means:
+**Note:** As of the latest version, E2E tests now create their own fresh GCP Pub/Sub resources (topics and subscriptions) for each test run. This means:
 
 - Each test gets isolated resources with unique names
 - Tests no longer depend on pre-existing Terraform-managed resources
@@ -24,7 +24,7 @@
 
 ### Parallel Execution
 
-Integration tests now run in parallel by default, significantly reducing execution time. The `run_tests.sh` script supports configurable parallelism:
+E2E tests now run in parallel by default, significantly reducing execution time. The `run_tests.sh` script supports configurable parallelism:
 
 - Default: 4 concurrent tests
 - Configurable via `PARALLEL_TESTS` environment variable

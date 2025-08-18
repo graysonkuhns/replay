@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"replay/integration_tests/testhelpers"
+	"replay/e2e_tests/testhelpers"
 )
 
 func init() {
@@ -14,8 +14,8 @@ func init() {
 
 func TestMoveStopsWhenSourceExhausted(t *testing.T) {
 	t.Parallel()
-	// Set up integration test environment
-	baseTest := testhelpers.NewBaseIntegrationTest(t, "move_test")
+	// Set up e2e test environment
+	baseTest := testhelpers.NewBaseE2ETest(t, "move_test")
 	// For this test, we move messages from the dead letter infrastructure to the normal events infrastructure.
 
 	numMessages := 3
@@ -66,8 +66,8 @@ func TestMoveStopsWhenSourceExhausted(t *testing.T) {
 
 func TestMoveOperationWithCount(t *testing.T) {
 	t.Parallel()
-	// Set up integration test environment
-	baseTest := testhelpers.NewBaseIntegrationTest(t, "move_test_count")
+	// Set up e2e test environment
+	baseTest := testhelpers.NewBaseE2ETest(t, "move_test_count")
 
 	numMessages := 5
 	moveCount := 3
@@ -124,7 +124,7 @@ func TestMoveOperationWithCount(t *testing.T) {
 func TestMoveMessageBodyIntegrity(t *testing.T) {
 	t.Parallel()
 	// New test to verify that the body content of moved messages remains unchanged.
-	baseTest := testhelpers.NewBaseIntegrationTest(t, "move_test_body_integrity")
+	baseTest := testhelpers.NewBaseE2ETest(t, "move_test_body_integrity")
 
 	// Prepare messages with unique body content.
 	numMessages := 3

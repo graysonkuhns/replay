@@ -9,21 +9,21 @@ import (
 	"cloud.google.com/go/pubsub/v2"
 )
 
-// BaseIntegrationTest encapsulates common functionality for integration tests
-type BaseIntegrationTest struct {
+// BaseE2ETest encapsulates common functionality for e2e tests
+type BaseE2ETest struct {
 	*testing.T
 	Setup       *TestSetup
 	TestRunID   string
 	TestContext *TestContext
 }
 
-// NewBaseIntegrationTest creates a new BaseIntegrationTest instance
-func NewBaseIntegrationTest(t *testing.T, testPrefix string) *BaseIntegrationTest {
+// NewBaseE2ETest creates a new BaseE2ETest instance
+func NewBaseE2ETest(t *testing.T, testPrefix string) *BaseE2ETest {
 	t.Helper()
 	// Generate a unique test run ID with the provided prefix
 	testRunID := fmt.Sprintf("%s_%s", testPrefix, GenerateTestRunID())
-	setup := SetupIntegrationTestWithContext(t, testRunID)
-	return &BaseIntegrationTest{
+	setup := SetupE2ETestWithContext(t, testRunID)
+	return &BaseE2ETest{
 		T:           t,
 		Setup:       setup,
 		TestRunID:   testRunID,
@@ -32,7 +32,7 @@ func NewBaseIntegrationTest(t *testing.T, testPrefix string) *BaseIntegrationTes
 }
 
 // PublishMessages publishes messages to the source topic
-func (b *BaseIntegrationTest) PublishMessages(messages []pubsub.Message) error {
+func (b *BaseE2ETest) PublishMessages(messages []pubsub.Message) error {
 	b.Helper()
 	// Add test context attributes to all messages
 	for i := range messages {
@@ -58,7 +58,7 @@ func (b *BaseIntegrationTest) PublishMessages(messages []pubsub.Message) error {
 }
 
 // RunDLRCommand runs the DLR command with the given inputs
-func (b *BaseIntegrationTest) RunDLRCommand(inputs string) (string, error) {
+func (b *BaseE2ETest) RunDLRCommand(inputs string) (string, error) {
 	b.Helper()
 	dlrArgs := []string{
 		"dlr",
@@ -79,7 +79,7 @@ func (b *BaseIntegrationTest) RunDLRCommand(inputs string) (string, error) {
 }
 
 // RunDLRCommandWithArgs runs the DLR command with custom arguments
-func (b *BaseIntegrationTest) RunDLRCommandWithArgs(args []string, inputs string) (string, error) {
+func (b *BaseE2ETest) RunDLRCommandWithArgs(args []string, inputs string) (string, error) {
 	b.Helper()
 	// Create stdin simulator if inputs provided
 	if inputs != "" {
@@ -94,7 +94,7 @@ func (b *BaseIntegrationTest) RunDLRCommandWithArgs(args []string, inputs string
 }
 
 // RunMoveCommand runs the move command with an optional count
-func (b *BaseIntegrationTest) RunMoveCommand(count int) (string, error) {
+func (b *BaseE2ETest) RunMoveCommand(count int) (string, error) {
 	b.Helper()
 	moveArgs := []string{
 		"move",
@@ -112,13 +112,13 @@ func (b *BaseIntegrationTest) RunMoveCommand(count int) (string, error) {
 }
 
 // RunMoveCommandWithArgs runs the move command with custom arguments
-func (b *BaseIntegrationTest) RunMoveCommandWithArgs(args []string) (string, error) {
+func (b *BaseE2ETest) RunMoveCommandWithArgs(args []string) (string, error) {
 	b.Helper()
 	return RunCLICommand(args)
 }
 
 // VerifyMessagesInDestination polls and verifies messages in destination subscription
-func (b *BaseIntegrationTest) VerifyMessagesInDestination(expected int) error {
+func (b *BaseE2ETest) VerifyMessagesInDestination(expected int) error {
 	b.Helper()
 	// Add retry logic for improved reliability
 	const maxRetries = 3
@@ -153,7 +153,7 @@ func (b *BaseIntegrationTest) VerifyMessagesInDestination(expected int) error {
 }
 
 // VerifyMessagesInSource polls and verifies messages in source subscription
-func (b *BaseIntegrationTest) VerifyMessagesInSource(expected int) error {
+func (b *BaseE2ETest) VerifyMessagesInSource(expected int) error {
 	b.Helper()
 	// Add retry logic for improved reliability
 	const maxRetries = 3
@@ -188,7 +188,7 @@ func (b *BaseIntegrationTest) VerifyMessagesInSource(expected int) error {
 }
 
 // GetMessagesFromDestination retrieves messages from destination subscription
-func (b *BaseIntegrationTest) GetMessagesFromDestination(expected int) ([]*pubsub.Message, error) {
+func (b *BaseE2ETest) GetMessagesFromDestination(expected int) ([]*pubsub.Message, error) {
 	b.Helper()
 	// Retry mechanism for improved reliability in nightly tests
 	const maxRetries = 3
@@ -220,7 +220,7 @@ func (b *BaseIntegrationTest) GetMessagesFromDestination(expected int) ([]*pubsu
 }
 
 // GetMessagesFromSource retrieves messages from source subscription
-func (b *BaseIntegrationTest) GetMessagesFromSource(expected int) ([]*pubsub.Message, error) {
+func (b *BaseE2ETest) GetMessagesFromSource(expected int) ([]*pubsub.Message, error) {
 	b.Helper()
 	return PollMessages(
 		b.Setup.Context,
@@ -232,13 +232,13 @@ func (b *BaseIntegrationTest) GetMessagesFromSource(expected int) ([]*pubsub.Mes
 }
 
 // WaitForMessagePropagation waits for messages to propagate through PubSub
-func (b *BaseIntegrationTest) WaitForMessagePropagation() {
+func (b *BaseE2ETest) WaitForMessagePropagation() {
 	b.Helper()
 	time.Sleep(30 * time.Second)
 }
 
 // CreateTestMessages creates standard test messages with test context attributes
-func (b *BaseIntegrationTest) CreateTestMessages(count int, prefix string) []pubsub.Message {
+func (b *BaseE2ETest) CreateTestMessages(count int, prefix string) []pubsub.Message {
 	b.Helper()
 	var messages []pubsub.Message
 	for i := 1; i <= count; i++ {
@@ -251,7 +251,7 @@ func (b *BaseIntegrationTest) CreateTestMessages(count int, prefix string) []pub
 }
 
 // PublishAndWait publishes messages and waits for propagation
-func (b *BaseIntegrationTest) PublishAndWait(messages []pubsub.Message) error {
+func (b *BaseE2ETest) PublishAndWait(messages []pubsub.Message) error {
 	b.Helper()
 	if err := b.PublishMessages(messages); err != nil {
 		return err
@@ -261,7 +261,7 @@ func (b *BaseIntegrationTest) PublishAndWait(messages []pubsub.Message) error {
 }
 
 // CreateTempFile creates a temporary file with automatic tracking and cleanup
-func (b *BaseIntegrationTest) CreateTempFile(pattern string) (*os.File, error) {
+func (b *BaseE2ETest) CreateTempFile(pattern string) (*os.File, error) {
 	b.Helper()
 	file, err := os.CreateTemp("", pattern)
 	if err != nil {

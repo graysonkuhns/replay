@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"replay/integration_tests/testhelpers"
+	"replay/e2e_tests/testhelpers"
 
 	"cloud.google.com/go/pubsub/v2"
 )
@@ -15,7 +15,7 @@ import (
 func TestDLRBinaryEdgeCases(t *testing.T) {
 	t.Parallel()
 	// Test specific binary edge cases that might cause issues in message processing
-	baseTest := testhelpers.NewBaseIntegrationTest(t, "dlr_binary_edge_cases_test")
+	baseTest := testhelpers.NewBaseE2ETest(t, "dlr_binary_edge_cases_test")
 
 	// Purge any existing messages from the source subscription to ensure test isolation
 	if err := testhelpers.PurgeSubscription(baseTest.Setup.Context, baseTest.Setup.Client, baseTest.Setup.GetSourceSubscriptionName()); err != nil {
