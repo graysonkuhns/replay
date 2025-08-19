@@ -75,6 +75,8 @@ func TestDLRBinaryMessageIntegrity(t *testing.T) {
 				// If sizes match, do full binary comparison
 				if bytes.Equal(msg.Data, expectedData) {
 					found = true
+					// Now use AssertBinaryEquals to provide better error message if needed
+					testhelpers.AssertBinaryEquals(t, msg.Data, expectedData)
 					t.Logf("Binary message %d verified (size: %d bytes)", i+1, expectedSize)
 					break
 				} else {

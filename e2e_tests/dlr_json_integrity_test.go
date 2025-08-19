@@ -137,21 +137,8 @@ func TestDLRJSONMessageIntegrity(t *testing.T) {
 			if receivedMap["id"] == expectedMap["id"] {
 				found = true
 
-				// Convert both to JSON strings for deep comparison
-				expectedJSON, err := json.Marshal(expectedMap)
-				if err != nil {
-					t.Fatalf("Failed to marshal expected map: %v", err)
-				}
-
-				receivedJSON, err := json.Marshal(receivedMap)
-				if err != nil {
-					t.Fatalf("Failed to marshal received map: %v", err)
-				}
-
-				if string(expectedJSON) != string(receivedJSON) {
-					t.Fatalf("JSON structure or values were altered during DLR operation.\nExpected: %s\nReceived: %s",
-						string(expectedJSON), string(receivedJSON))
-				}
+				// Use AssertJSONEquals for deep comparison
+				testhelpers.AssertJSONEquals(t, msg.Data, []byte(expectedJSON))
 				break
 			}
 		}

@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"replay/e2e_tests/testhelpers"
+
+	"cloud.google.com/go/pubsub/v2"
 )
 
 func TestTestMessageBuilder(t *testing.T) {
@@ -34,23 +36,22 @@ func TestTestMessageBuilder(t *testing.T) {
 
 	// Test Build() returns the correct messages
 	messages := builder.Build()
-	if len(messages) != 2 {
-		t.Fatalf("Expected 2 messages from Build(), got %d", len(messages))
+	// Convert []pubsub.Message to []*pubsub.Message for AssertMessageCount
+	messagePtrs := make([]*pubsub.Message, len(messages))
+	for i := range messages {
+		messagePtrs[i] = &messages[i]
 	}
+	testhelpers.AssertMessageCount(t, messagePtrs, 2)
 
 	// Verify first message
-	if string(messages[0].Data) != "Hello, World!" {
-		t.Fatalf("Expected first message 'Hello, World!', got '%s'", string(messages[0].Data))
-	}
+	testhelpers.AssertMessageContent(t, string(messages[0].Data), "Hello, World!")
 	if messages[0].Attributes["testRun"] != "" {
 		// First message should not have attributes since they were added after
 		t.Logf("First message attributes: %v", messages[0].Attributes)
 	}
 
 	// Verify second message has attributes
-	if string(messages[1].Data) != "Second message" {
-		t.Fatalf("Expected second message 'Second message', got '%s'", string(messages[1].Data))
-	}
+	testhelpers.AssertMessageContent(t, string(messages[1].Data), "Second message")
 	if messages[1].Attributes["testRun"] != "test-123" {
 		t.Fatalf("Expected testRun 'test-123', got '%s'", messages[1].Attributes["testRun"])
 	}
@@ -71,9 +72,12 @@ func TestTestMessageBuilderJSON(t *testing.T) {
 	builder.WithJSONMessage(testData)
 	messages := builder.Build()
 
-	if len(messages) != 1 {
-		t.Fatalf("Expected 1 message, got %d", len(messages))
+	// Convert []pubsub.Message to []*pubsub.Message for AssertMessageCount
+	messagePtrs := make([]*pubsub.Message, len(messages))
+	for i := range messages {
+		messagePtrs[i] = &messages[i]
 	}
+	testhelpers.AssertMessageCount(t, messagePtrs, 1)
 
 	// Verify JSON was marshaled correctly
 	var parsed map[string]interface{}
@@ -104,9 +108,12 @@ func TestTestMessageBuilderBinary(t *testing.T) {
 	builder.WithBinaryMessage(100)
 	messages := builder.Build()
 
-	if len(messages) != 1 {
-		t.Fatalf("Expected 1 message, got %d", len(messages))
+	// Convert []pubsub.Message to []*pubsub.Message for AssertMessageCount
+	messagePtrs := make([]*pubsub.Message, len(messages))
+	for i := range messages {
+		messagePtrs[i] = &messages[i]
 	}
+	testhelpers.AssertMessageCount(t, messagePtrs, 1)
 
 	if len(messages[0].Data) != 100 {
 		t.Fatalf("Expected binary data length 100, got %d", len(messages[0].Data))
@@ -124,9 +131,12 @@ func TestTestMessageBuilderBinary(t *testing.T) {
 	builder.Reset().WithPatternBinaryMessage(256)
 	patternMessages := builder.Build()
 
-	if len(patternMessages) != 1 {
-		t.Fatalf("Expected 1 pattern message, got %d", len(patternMessages))
+	// Convert []pubsub.Message to []*pubsub.Message for AssertMessageCount
+	patternMessagePtrs := make([]*pubsub.Message, len(patternMessages))
+	for i := range patternMessages {
+		patternMessagePtrs[i] = &patternMessages[i]
 	}
+	testhelpers.AssertMessageCount(t, patternMessagePtrs, 1)
 
 	if len(patternMessages[0].Data) != 256 {
 		t.Fatalf("Expected pattern binary data length 256, got %d", len(patternMessages[0].Data))

@@ -98,6 +98,8 @@ func TestMoveBinaryMessageIntegrity(t *testing.T) {
 		for _, msg := range received {
 			if bytes.Equal(msg.Data, expectedData) {
 				found = true
+				// Use AssertBinaryEquals for consistency
+				testhelpers.AssertBinaryEquals(t, msg.Data, expectedData)
 				break
 			}
 		}
