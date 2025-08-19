@@ -1,0 +1,63 @@
+---
+description: Google Cloud Pub/Sub specific patterns and conventions
+globs:
+  - "**/broker.go"
+  - "**/pubsubhelper.go"
+alwaysApply: false
+---
+
+# GCP Pub/Sub Patterns
+
+## Resource Naming
+- Topics: `projects/{project}/topics/{name}`
+- Subscriptions: `projects/{project}/subscriptions/{name}`
+- Test resources: `{test-prefix}_{timestamp}_{resource-type}`
+
+## Important Pub/Sub Concepts
+- **Ack Deadline**: Time to process message before redelivery (important for DLR review time)
+- **Max Outstanding Messages**: Concurrent message limit
+- **Ordering Key**: Ensures message order preservation
+- **Message Attributes**: Key-value metadata on messages
+
+## Broker Pattern
+```go
+// PubSubBroker implements MessageBroker for Google Cloud Pub/Sub
+type PubSubBroker struct {
+    subClient    *pubsub.Client
+    topicClient  *pubsub.Client
+    publisher    *pubsub.Publisher
+    subscription string
+    topic        string
+}
+
+// Pull retrieves a single message from the subscription
+func (b *PubSubBroker) Pull(ctx context.Context, config PullConfig) (*Message, error) {
+    pullCtx, cancel := context.WithTimeout(ctx, config.Timeout)
+    defer cancel()
+    // Implementation
+}
+```
+
+## Authentication
+- Uses Application Default Credentials (ADC)
+- Requires `gcloud auth application-default login`
+- No credential handling in code
+- Project-level access required for cross-project operations
+
+## Common Patterns
+```go
+// Parse resource names
+parts := strings.Split(subscription, "/")
+if len(parts) < 4 {
+    return nil, fmt.Errorf("invalid subscription resource format: %s", subscription)
+}
+project := parts[1]
+
+// Create clients for different projects
+if topicProj == subProj {
+    topicClient = subClient  // Reuse client for same project
+} else {
+    topicClient, err = pubsub.NewClient(ctx, topicProj)
+    // Handle error
+}
+```

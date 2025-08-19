@@ -1,0 +1,174 @@
+---
+description: Replay CLI project context and conventions
+alwaysApply: true
+---
+
+# Replay CLI - Project Context
+
+> **IMPORTANT**: Keep this rule file updated when making architectural changes, adding new features, or modifying existing patterns. Accurate documentation ensures effective AI assistance.
+
+## Project Overview
+Replay is a CLI tool for managing dead-lettered messages across message brokers, primarily Google Cloud Pub/Sub. The project is written in Go and uses the Cobra CLI framework. The codebase is primarily AI-generated and not yet production-ready.
+
+## Core Purpose
+- Review and manage dead-lettered messages from message queues
+- Allow engineers to iterate through messages and decide to discard or reprocess them
+- Support message movement between sources and destinations
+- Currently supports GCP Pub/Sub subscriptions (source) and topics (destination)
+
+## Architecture Overview
+
+### Command Structure
+- **Root Command** (`cmd/root.go`): Base CLI command "replay"
+- **DLR Command** (`cmd/dlr.go`): Interactive dead-letter review - allows users to review messages one-by-one
+- **Move Command** (`cmd/move.go`): Automatic bulk message movement without interaction
+
+### Core Components
+
+1. **Message Broker Interface** (`cmd/broker.go`)
+   - `MessageBroker`: Abstract interface for message operations
+   - `PubSubBroker`: Concrete implementation for Google Cloud Pub/Sub
+   - Operations: Pull, Publish, Acknowledge, Close
+
+2. **Message Processing** (`cmd/processor.go`)
+   - `MessageProcessor`: Common logic for processing messages
+   - `MessageHandler` interface: Different handling strategies (DLR vs Move)
+   - Handles timeouts, acknowledgments, and error cases
+
+3. **Configuration** (`cmd/config.go`)
+   - `CommandConfig`: Shared configuration structure
+   - Source/destination types and locations
+   - Poll timeout, message count limits, formatting options
+
+### Message Flow
+1. Pull single message from source subscription
+2. Process message (interactive review or automatic move)
+3. If approved: Publish to destination topic
+4. Acknowledge message at source (removes from queue)
+
+## Key Design Patterns
+
+### Command Pattern
+- Each CLI command (dlr, move) has its own handler implementing `MessageHandler`
+- Processors delegate to handlers for command-specific behavior
+
+### Strategy Pattern  
+- Different message handling strategies: `DLRHandler` (interactive) vs `MoveHandler` (automatic)
+- Both implement the same `MessageHandler` interface
+
+### Dependency Injection
+- Brokers, handlers, and processors are composed via constructors
+- Facilitates testing with mock implementations
+
+## Testing Architecture
+
+### E2E Test Framework (`e2e_tests/testhelpers/`)
+- **BaseE2ETest**: Common test functionality and setup
+- **TestContext**: Tracks test-specific attributes for message filtering
+- **TestSetup**: Manages GCP resources (topics, subscriptions) per test
+- **StdinSimulator**: Simulates user input for interactive commands
+- **CLIHelper**: Executes CLI commands and captures output
+
+### Test Categories
+1. **Integrity Tests**: Verify message data preservation (JSON, binary, plaintext)
+2. **Edge Case Tests**: Handle malformed input, empty messages, special characters
+3. **Interactive Tests**: Test user interaction flows (move, discard, quit)
+4. **Error Handling Tests**: Network issues, invalid configurations
+
+### Test Isolation
+- Each test creates unique topics/subscriptions with test ID prefixes
+- Messages tagged with test-specific attributes for filtering
+- Cleanup happens automatically after tests
+
+## Code Conventions
+
+### File Organization
+- `cmd/`: CLI command implementations and core logic
+- `constants/`: Shared constants and configuration values
+- `e2e_tests/`: End-to-end integration tests
+- `docs/`: Auto-generated CLI documentation
+- `tools/`: Development tools (e.g., documentation generator)
+
+### Go Patterns
+- Error wrapping with `fmt.Errorf` and `%w` verb
+- Context propagation for cancellation
+- Defer for resource cleanup
+- Table-driven tests in E2E suite
+
+### Naming Conventions
+- Commands: verb-based (move, dlr)
+- Interfaces: noun + "er" suffix (MessageBroker, MessageHandler)
+- Test functions: Test + functionality (TestDLRBinaryMessageIntegrity)
+
+## Key Dependencies
+- `cloud.google.com/go/pubsub/v2`: Google Cloud Pub/Sub client
+- `github.com/spf13/cobra`: CLI framework
+- `google.golang.org/protobuf`: Protocol buffer support
+
+## Testing Instructions
+
+### Running E2E Tests
+Always use the `run_tests.sh` script to run tests:
+
+```bash
+# Run all tests (requires GCP_PROJECT env var or .env file)
+./run_tests.sh
+
+# Run a specific test by name
+./run_tests.sh TestDLRBinaryMessageIntegrity
+
+# Configure parallel test execution (default is 4)
+PARALLEL_TESTS=1 ./run_tests.sh
+```
+
+**Requirements:**
+- Set `GCP_PROJECT` environment variable or create a `.env` file with `GCP_PROJECT=your-project-id`
+- Have valid GCloud authentication (`gcloud auth application-default login`)
+- Tests run with 45-minute timeout and create real GCP resources
+
+### Documentation Maintenance
+**IMPORTANT**: When making changes to the codebase, always update:
+1. Project rules in `.cursor/rules/` - Update this file with architectural changes, new patterns, or conventions
+2. Generated docs - Run `./regenerate_docs.sh` after CLI changes
+
+Keep documentation in sync with code changes to maintain accuracy for future development.
+
+## Common Operations
+
+### Adding a New Command
+1. Create new file in `cmd/` directory
+2. Implement cobra.Command structure
+3. Create handler implementing MessageHandler interface
+4. Register command in init() function
+5. Add E2E tests in `e2e_tests/`
+
+### Adding a New Message Broker
+1. Implement MessageBroker interface
+2. Add broker type constant in `constants/constants.go`
+3. Update broker factory in command files
+4. Add integration tests
+
+### Testing Locally
+- Run `./run_tests.sh` for all tests
+- Use `go test ./e2e_tests/... -run TestName` for specific tests
+- Tests require GCP credentials and project configuration
+
+## Important Notes
+- Authentication uses GCloud CLI credentials (ADC)
+- E2E tests create real GCP resources (cleaned up after)
+- Message ordering preserved via ordering keys
+- Acknowledgment deadline important for DLR review time
+- Not production-ready - still in active development
+
+## Common Issues and Solutions
+- **Timeout errors**: Increase poll timeout or check network
+- **Permission errors**: Verify GCP credentials and project access
+- **Message not found**: Check subscription has unacked messages
+- **Ack deadline exceeded**: Message returned to queue if not acked in time
+
+## Future Considerations
+- Support for additional message brokers (Kafka, RabbitMQ, etc.)
+- Batch message processing
+- Message filtering and search
+- Configuration file support
+- Enhanced error recovery mechanisms

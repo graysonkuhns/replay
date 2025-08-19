@@ -1,0 +1,59 @@
+---
+description: E2E testing patterns and conventions for the Replay CLI
+globs:
+  - "**/e2e_tests/**/*.go"
+  - "**/testhelpers/**/*.go"
+  - "**/run_tests.sh"
+alwaysApply: false
+---
+
+# E2E Testing Conventions
+
+## Running Tests
+ALWAYS use the `run_tests.sh` script to run tests - it handles GCP_PROJECT setup:
+```bash
+./run_tests.sh                    # Run all tests
+./run_tests.sh TestName          # Run specific test
+PARALLEL_TESTS=1 ./run_tests.sh  # Control parallelism
+```
+
+## Test Structure Pattern
+```go
+func TestFeature(t *testing.T) {
+    // 1. Setup with unique test prefix
+    base := testhelpers.NewBaseE2ETest(t, "test-prefix")
+    defer base.Cleanup()
+    
+    // 2. Publish test messages
+    messages := []pubsub.Message{{Data: []byte("test")}}
+    base.PublishMessages(messages)
+    
+    // 3. Run command
+    output, err := base.RunDLRCommand("m\nq\n")
+    
+    // 4. Assert results
+    base.AssertProcessedMessages(1)
+    base.AssertDestinationHasMessages(1)
+}
+```
+
+## Test Helpers
+- `NewBaseE2ETest()` - Creates test with isolated GCP resources
+- `PublishMessages()` - Publishes messages with test attributes
+- `RunDLRCommand()` - Runs DLR with simulated stdin
+- `RunMoveCommand()` - Runs move command
+- `AssertProcessedMessages()` - Verifies processing count
+- `AssertDestinationHasMessages()` - Checks destination message count
+- `VerifyMessageContent()` - Validates message integrity
+
+## Test Timeouts (from constants/constants.go)
+- `TestShortPollTimeout`: 5s - Quick message checks
+- `TestRetryDelay`: 10s - Between retry attempts  
+- `TestMessagePropagation`: 30s - Message delivery wait
+- `TestLongPollTimeout`: 60s - Extended operations
+- `TestAckDeadlineExpiry`: 70s - Ack deadline testing
+
+## Test Isolation
+- Each test creates unique topics/subscriptions with test ID prefixes
+- Messages tagged with test-specific attributes for filtering
+- Automatic cleanup via defer
