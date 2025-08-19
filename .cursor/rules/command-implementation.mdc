@@ -1,0 +1,101 @@
+---
+description: Patterns for implementing CLI commands and message handlers
+globs:
+  - "**/cmd/*.go"
+alwaysApply: false
+---
+
+# Command Implementation Patterns
+
+## Adding a New Command
+1. Create new file in `cmd/` directory
+2. Implement cobra.Command structure
+3. Create handler implementing MessageHandler interface
+4. Register command in init() function
+5. Add E2E tests in `e2e_tests/`
+
+## MessageHandler Interface
+```go
+type MessageHandler interface {
+    HandleMessage(ctx context.Context, message *Message, msgNum int) (acknowledge bool, err error)
+}
+```
+
+## Command Structure Pattern
+```go
+// Handler implementation
+type YourHandler struct {
+    broker MessageBroker
+    config CommandConfig
+    // other fields
+}
+
+func NewYourHandler(broker MessageBroker, config CommandConfig) *YourHandler {
+    return &YourHandler{
+        broker: broker,
+        config: config,
+    }
+}
+
+func (h *YourHandler) HandleMessage(ctx context.Context, message *Message, msgNum int) (bool, error) {
+    // Implementation
+    return true, nil  // acknowledge = true
+}
+
+// Command definition
+var yourCmd = &cobra.Command{
+    Use:   "yourcommand",
+    Short: "Brief description",
+    Long:  `Detailed description`,
+    RunE: func(cmd *cobra.Command, args []string) error {
+        config := CommandConfig{
+            SourceType:      sourceType,
+            SourceLocation:  sourceLocation,
+            DestType:        destType,
+            DestLocation:    destLocation,
+            PollTimeout:     time.Duration(pollTimeoutSeconds) * time.Second,
+            Count:           count,
+        }
+        
+        // Create broker
+        broker, err := createBroker(cmd.Context(), config)
+        if err != nil {
+            return err
+        }
+        defer broker.Close()
+        
+        // Create handler and processor
+        handler := NewYourHandler(broker, config)
+        processor := NewMessageProcessor(broker, config, handler, os.Stdout)
+        
+        // Process messages
+        processed, err := processor.Process(cmd.Context())
+        return err
+    },
+}
+
+func init() {
+    rootCmd.AddCommand(yourCmd)
+    // Add flags
+}
+```
+
+## Error Handling
+```go
+// Always wrap errors with context
+if err != nil {
+    return fmt.Errorf("failed to create broker: %w", err)
+}
+
+// Special error for user quit
+if errors.Is(err, ErrQuit) {
+    break
+}
+```
+
+## Context Usage
+```go
+// Timeout for operations
+ctx, cancel := context.WithTimeout(ctx, config.Timeout)
+defer cancel()
+```
