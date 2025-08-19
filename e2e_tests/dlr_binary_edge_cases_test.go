@@ -121,6 +121,8 @@ func TestDLRBinaryEdgeCases(t *testing.T) {
 		for _, msg := range received {
 			if msg.Attributes["description"] == desc && bytes.Equal(msg.Data, expectedData) {
 				found = true
+				// Use AssertBinaryEquals for better error reporting if needed
+				testhelpers.AssertBinaryEquals(t, msg.Data, expectedData)
 				t.Logf("Binary edge case '%s' verified (size: %d bytes)",
 					desc, len(expectedData))
 				break

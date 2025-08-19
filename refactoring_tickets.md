@@ -12,7 +12,7 @@ This document contains individual, well-scoped tickets extracted from the refact
 ## Phase 1: Foundation & Quick Wins
 *These tickets establish foundations and deliver immediate value*
 
-### 1.1 🔴 Extract Constants and Magic Values (Production) ⏱️ S
+### 1.1 🔴 Extract Constants and Magic Values (Production) ⏱️ S [done ✅]
 **Description**: Replace all hard-coded strings and values with named constants
 - Create a `constants` package
 - Define constants for broker types: "GCP_PUBSUB_SUBSCRIPTION", "GCP_PUBSUB_TOPIC"

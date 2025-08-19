@@ -81,6 +81,8 @@ func TestDLRPlaintextMessageIntegrity(t *testing.T) {
 		for _, msg := range received {
 			if string(msg.Data) == expected {
 				found = true
+				// Use AssertMessageContent for consistency
+				testhelpers.AssertMessageContent(t, string(msg.Data), expected)
 				break
 			}
 		}
