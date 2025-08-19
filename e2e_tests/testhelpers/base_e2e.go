@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"replay/constants"
+
 	"cloud.google.com/go/pubsub/v2"
 )
 
@@ -62,8 +64,8 @@ func (b *BaseE2ETest) RunDLRCommand(inputs string) (string, error) {
 	b.Helper()
 	dlrArgs := []string{
 		"dlr",
-		"--source-type", "GCP_PUBSUB_SUBSCRIPTION",
-		"--destination-type", "GCP_PUBSUB_TOPIC",
+		"--source-type", constants.BrokerTypeGCPPubSubSubscription,
+		"--destination-type", constants.BrokerTypeGCPPubSubTopic,
 		"--source", b.Setup.GetSourceSubscriptionName(),
 		"--destination", b.Setup.GetDestTopicName(),
 	}
@@ -98,8 +100,8 @@ func (b *BaseE2ETest) RunMoveCommand(count int) (string, error) {
 	b.Helper()
 	moveArgs := []string{
 		"move",
-		"--source-type", "GCP_PUBSUB_SUBSCRIPTION",
-		"--destination-type", "GCP_PUBSUB_TOPIC",
+		"--source-type", constants.BrokerTypeGCPPubSubSubscription,
+		"--destination-type", constants.BrokerTypeGCPPubSubTopic,
 		"--source", b.Setup.GetSourceSubscriptionName(),
 		"--destination", b.Setup.GetDestTopicName(),
 	}
@@ -121,8 +123,8 @@ func (b *BaseE2ETest) RunMoveCommandWithArgs(args []string) (string, error) {
 func (b *BaseE2ETest) VerifyMessagesInDestination(expected int) error {
 	b.Helper()
 	// Add retry logic for improved reliability
-	const maxRetries = 3
-	const retryDelay = 10 * time.Second
+	const maxRetries = constants.TestMaxRetries
+	const retryDelay = constants.TestRetryDelay
 
 	var lastErr error
 	for attempt := 1; attempt <= maxRetries; attempt++ {
@@ -156,8 +158,8 @@ func (b *BaseE2ETest) VerifyMessagesInDestination(expected int) error {
 func (b *BaseE2ETest) VerifyMessagesInSource(expected int) error {
 	b.Helper()
 	// Add retry logic for improved reliability
-	const maxRetries = 3
-	const retryDelay = 10 * time.Second
+	const maxRetries = constants.TestMaxRetries
+	const retryDelay = constants.TestRetryDelay
 
 	var lastErr error
 	for attempt := 1; attempt <= maxRetries; attempt++ {
@@ -191,8 +193,8 @@ func (b *BaseE2ETest) VerifyMessagesInSource(expected int) error {
 func (b *BaseE2ETest) GetMessagesFromDestination(expected int) ([]*pubsub.Message, error) {
 	b.Helper()
 	// Retry mechanism for improved reliability in nightly tests
-	const maxRetries = 3
-	const retryDelay = 10 * time.Second // Increased from 5s to match VerifyMessagesInDestination
+	const maxRetries = constants.TestMaxRetries
+	const retryDelay = constants.TestRetryDelay // Increased from 5s to match VerifyMessagesInDestination
 
 	var lastErr error
 	for attempt := 1; attempt <= maxRetries; attempt++ {
@@ -234,7 +236,7 @@ func (b *BaseE2ETest) GetMessagesFromSource(expected int) ([]*pubsub.Message, er
 // WaitForMessagePropagation waits for messages to propagate through PubSub
 func (b *BaseE2ETest) WaitForMessagePropagation() {
 	b.Helper()
-	time.Sleep(30 * time.Second)
+	time.Sleep(constants.TestMessagePropagation)
 }
 
 // CreateTestMessages creates standard test messages with test context attributes

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 
+	"replay/constants"
 	"replay/e2e_tests/testhelpers"
 
 	"cloud.google.com/go/pubsub/v2"
@@ -94,7 +94,7 @@ func TestDLRInvalidInputHandling(t *testing.T) {
 
 	// Create a custom receiver function to check for any messages
 	var foundMessage bool
-	cctx, cancel := context.WithTimeout(baseTest.Setup.Context, 10*time.Second)
+	cctx, cancel := context.WithTimeout(baseTest.Setup.Context, constants.TestRetryDelay)
 	defer cancel()
 
 	// Use Subscriber directly instead of PollMessages

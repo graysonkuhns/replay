@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"replay/constants"
 	"replay/e2e_tests/testhelpers"
 
 	"cloud.google.com/go/pubsub/v2"
@@ -56,8 +57,8 @@ func TestDLRWithPrettyJSON(t *testing.T) {
 	// Prepare CLI arguments for the dlr command with pretty-json flag.
 	dlrArgs := []string{
 		"dlr",
-		"--source-type", "GCP_PUBSUB_SUBSCRIPTION",
-		"--destination-type", "GCP_PUBSUB_TOPIC",
+		"--source-type", constants.BrokerTypeGCPPubSubSubscription,
+		"--destination-type", constants.BrokerTypeGCPPubSubTopic,
 		"--source", baseTest.Setup.GetSourceSubscriptionName(),
 		"--destination", baseTest.Setup.GetDestTopicName(),
 		"--pretty-json", // Enable pretty JSON output

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"replay/constants"
 	"replay/e2e_tests/testhelpers"
 
 	"cloud.google.com/go/pubsub/v2"
@@ -32,7 +33,7 @@ func TestDLRQuitOperation(t *testing.T) {
 
 	// Add extra wait to ensure messages are properly available in subscription
 	// This helps with test isolation when running in parallel
-	time.Sleep(10 * time.Second)
+	time.Sleep(constants.TestWaitShort)
 
 	// Simulate user inputs: "m" (move) for 2 messages, "d" (discard) for 1 message, then "q" (quit)
 	inputs := "m\nm\nd\nq\n"
@@ -110,7 +111,7 @@ func TestDLRQuitOperation(t *testing.T) {
 	}
 
 	// Wait for ack deadline to expire (60 seconds) before checking the source subscription
-	time.Sleep(70 * time.Second)
+	time.Sleep(constants.TestAckDeadlineExpiry)
 
 	// Verify that one message remains in the source subscription
 	// We expect exactly 1 message to remain in the source subscription after processing.
@@ -119,7 +120,7 @@ func TestDLRQuitOperation(t *testing.T) {
 	maxAttempts := 3
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		// Use a longer timeout context for this specific polling operation
-		pollCtx, pollCancel := context.WithTimeout(baseTest.Setup.Context, 60*time.Second)
+		pollCtx, pollCancel := context.WithTimeout(baseTest.Setup.Context, constants.TestLongPollTimeout)
 		sourceReceived, err = testhelpers.PollMessages(pollCtx, baseTest.Setup.Client, baseTest.Setup.GetSourceSubscriptionName(), baseTest.TestRunID, 1)
 		pollCancel()
 
@@ -129,7 +130,7 @@ func TestDLRQuitOperation(t *testing.T) {
 
 		if attempt < maxAttempts {
 			t.Logf("Attempt %d: Expected 1 message in source, got %d. Retrying...", attempt, len(sourceReceived))
-			time.Sleep(10 * time.Second)
+			time.Sleep(constants.TestWaitShort)
 		}
 	}
 

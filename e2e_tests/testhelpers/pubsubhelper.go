@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"log"
 	"strings"
-	"time"
+
+	"replay/constants"
 
 	"cloud.google.com/go/pubsub/v2"
 	pubsubpb "cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"
@@ -18,7 +19,7 @@ func PurgeSubscription(ctx context.Context, client *pubsub.Client, subscriptionN
 
 	// Pull and ack messages in batches for better performance
 	for {
-		pollCtx, pollCancel := context.WithTimeout(ctx, 5*time.Second)
+		pollCtx, pollCancel := context.WithTimeout(ctx, constants.TestShortPollTimeout)
 		req := &pubsubpb.PullRequest{
 			Subscription: subscriptionName,
 			MaxMessages:  100, // Pull up to 100 messages at a time
@@ -99,12 +100,12 @@ func PublishTestMessages(ctx context.Context, client *pubsub.Client, topicName s
 func PollMessages(ctx context.Context, client *pubsub.Client, subscriptionName string, testRunValue string, expectedCount int) ([]*pubsub.Message, error) {
 	var received []*pubsub.Message
 	// Increase timeout for better reliability with slower message propagation
-	cctx, cancel := context.WithTimeout(ctx, 90*time.Second)
+	cctx, cancel := context.WithTimeout(ctx, constants.TestExtendedPollTimeout)
 	defer cancel()
 
 	subscriber := client.Subscriber(subscriptionName)
 	// Set MaxOutstandingMessages to ensure we can receive all expected messages
-	subscriber.ReceiveSettings.MaxOutstandingMessages = expectedCount + 10
+	subscriber.ReceiveSettings.MaxOutstandingMessages = expectedCount + constants.TestMaxOutstandingOffset
 
 	err := subscriber.Receive(cctx, func(ctx context.Context, m *pubsub.Message) {
 		if m.Attributes["testRun"] == testRunValue {
