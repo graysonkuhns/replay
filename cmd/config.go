@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"replay/constants"
+
 	"github.com/spf13/cobra"
 )
 
@@ -34,11 +36,11 @@ func ParseCommandConfig(cmd *cobra.Command) (*CommandConfig, error) {
 	}
 
 	// Validate supported types
-	if sourceType != "GCP_PUBSUB_SUBSCRIPTION" {
-		return nil, fmt.Errorf("unsupported source type: %s. Supported: GCP_PUBSUB_SUBSCRIPTION", sourceType)
+	if sourceType != constants.BrokerTypeGCPPubSubSubscription {
+		return nil, fmt.Errorf("unsupported source type: %s. Supported: %s", sourceType, constants.BrokerTypeGCPPubSubSubscription)
 	}
-	if destType != "GCP_PUBSUB_TOPIC" {
-		return nil, fmt.Errorf("unsupported destination type: %s. Supported: GCP_PUBSUB_TOPIC", destType)
+	if destType != constants.BrokerTypeGCPPubSubTopic {
+		return nil, fmt.Errorf("unsupported destination type: %s. Supported: %s", destType, constants.BrokerTypeGCPPubSubTopic)
 	}
 
 	return &CommandConfig{
@@ -59,7 +61,7 @@ func AddCommonFlags(cmd *cobra.Command) {
 	cmd.Flags().String("source", "", "Full source resource name (e.g. projects/<proj>/subscriptions/<sub>)")
 	cmd.Flags().String("destination", "", "Full destination resource name (e.g. projects/<proj>/topics/<topic>)")
 	cmd.Flags().Int("count", 0, "Number of messages to process (0 for all messages)")
-	cmd.Flags().Int("polling-timeout-seconds", 10, "Timeout in seconds for polling a single message")
+	cmd.Flags().Int("polling-timeout-seconds", constants.DefaultPollTimeoutSeconds, "Timeout in seconds for polling a single message")
 
 	_ = cmd.MarkFlagRequired("source-type")
 	_ = cmd.MarkFlagRequired("destination-type")

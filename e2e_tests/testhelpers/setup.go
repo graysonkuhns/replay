@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"replay/constants"
+
 	"cloud.google.com/go/pubsub/v2"
 	pubsubpb "cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"
 	"google.golang.org/grpc/codes"
@@ -106,7 +108,7 @@ func SetupE2ETestWithContext(t *testing.T, testRunID string) *TestSetup {
 		Topic:                    sourceTopicFullName,
 		AckDeadlineSeconds:       60,
 		EnableMessageOrdering:    true,
-		MessageRetentionDuration: durationpb.New(604800 * time.Second), // 7 days default
+		MessageRetentionDuration: durationpb.New(constants.TestMessageRetentionDuration), // 7 days default
 	})
 	if err != nil {
 		// Check if error is because subscription already exists
@@ -122,7 +124,7 @@ func SetupE2ETestWithContext(t *testing.T, testRunID string) *TestSetup {
 		Topic:                    destTopicFullName,
 		AckDeadlineSeconds:       60,
 		EnableMessageOrdering:    true,
-		MessageRetentionDuration: durationpb.New(604800 * time.Second), // 7 days default
+		MessageRetentionDuration: durationpb.New(constants.TestMessageRetentionDuration), // 7 days default
 	})
 	if err != nil {
 		// Check if error is because subscription already exists
