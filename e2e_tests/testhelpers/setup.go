@@ -3,13 +3,13 @@ package testhelpers
 import (
 	"context"
 	"fmt"
-	"log"
 	"math/rand"
 	"os"
 	"testing"
 	"time"
 
 	"replay/constants"
+	"replay/logger"
 
 	"cloud.google.com/go/pubsub/v2"
 	pubsubpb "cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"
@@ -82,7 +82,8 @@ func SetupE2ETestWithContext(t *testing.T, testRunID string) *TestSetup {
 	if err != nil {
 		// Check if error is because topic already exists
 		if status, ok := status.FromError(err); ok && status.Code() == codes.AlreadyExists {
-			log.Printf("Topic %s already exists, continuing", sourceTopicFullName)
+			log := logger.NewLogger()
+			log.Info("Topic already exists, continuing", logger.String("topic", sourceTopicFullName))
 		} else {
 			t.Fatalf("Failed to create source topic %s: %v", sourceTopicFullName, err)
 		}
@@ -95,7 +96,8 @@ func SetupE2ETestWithContext(t *testing.T, testRunID string) *TestSetup {
 	if err != nil {
 		// Check if error is because topic already exists
 		if status, ok := status.FromError(err); ok && status.Code() == codes.AlreadyExists {
-			log.Printf("Topic %s already exists, continuing", destTopicFullName)
+			log := logger.NewLogger()
+			log.Info("Topic already exists, continuing", logger.String("topic", destTopicFullName))
 		} else {
 			t.Fatalf("Failed to create destination topic %s: %v", destTopicFullName, err)
 		}
@@ -113,7 +115,8 @@ func SetupE2ETestWithContext(t *testing.T, testRunID string) *TestSetup {
 	if err != nil {
 		// Check if error is because subscription already exists
 		if status, ok := status.FromError(err); ok && status.Code() == codes.AlreadyExists {
-			log.Printf("Subscription %s already exists, continuing", sourceSubFullName)
+			log := logger.NewLogger()
+			log.Info("Subscription already exists, continuing", logger.String("subscription", sourceSubFullName))
 		} else {
 			t.Fatalf("Failed to create source subscription %s: %v", sourceSubFullName, err)
 		}
@@ -129,7 +132,8 @@ func SetupE2ETestWithContext(t *testing.T, testRunID string) *TestSetup {
 	if err != nil {
 		// Check if error is because subscription already exists
 		if status, ok := status.FromError(err); ok && status.Code() == codes.AlreadyExists {
-			log.Printf("Subscription %s already exists, continuing", destSubFullName)
+			log := logger.NewLogger()
+			log.Info("Subscription already exists, continuing", logger.String("subscription", destSubFullName))
 		} else {
 			t.Fatalf("Failed to create destination subscription %s: %v", destSubFullName, err)
 		}
@@ -166,7 +170,8 @@ func SetupE2ETestWithContext(t *testing.T, testRunID string) *TestSetup {
 		if err := subAdmin.DeleteSubscription(ctx, &pubsubpb.DeleteSubscriptionRequest{
 			Subscription: sourceSubFullName,
 		}); err != nil {
-			log.Printf("Failed to delete source subscription %s: %v", sourceSubFullName, err)
+			log := logger.NewLogger()
+			log.Error("Failed to delete source subscription", err, logger.String("subscription", sourceSubFullName))
 		} else {
 			// Untrack successfully deleted resource
 			testCtx.UntrackSubscription(sourceSubFullName)
@@ -175,7 +180,8 @@ func SetupE2ETestWithContext(t *testing.T, testRunID string) *TestSetup {
 		if err := subAdmin.DeleteSubscription(ctx, &pubsubpb.DeleteSubscriptionRequest{
 			Subscription: destSubFullName,
 		}); err != nil {
-			log.Printf("Failed to delete destination subscription %s: %v", destSubFullName, err)
+			log := logger.NewLogger()
+			log.Error("Failed to delete destination subscription", err, logger.String("subscription", destSubFullName))
 		} else {
 			// Untrack successfully deleted resource
 			testCtx.UntrackSubscription(destSubFullName)
@@ -186,7 +192,8 @@ func SetupE2ETestWithContext(t *testing.T, testRunID string) *TestSetup {
 		if err := topicAdmin.DeleteTopic(ctx, &pubsubpb.DeleteTopicRequest{
 			Topic: sourceTopicFullName,
 		}); err != nil {
-			log.Printf("Failed to delete source topic %s: %v", sourceTopicFullName, err)
+			log := logger.NewLogger()
+			log.Error("Failed to delete source topic", err, logger.String("topic", sourceTopicFullName))
 		} else {
 			// Untrack successfully deleted resource
 			testCtx.UntrackTopic(sourceTopicFullName)
@@ -195,7 +202,8 @@ func SetupE2ETestWithContext(t *testing.T, testRunID string) *TestSetup {
 		if err := topicAdmin.DeleteTopic(ctx, &pubsubpb.DeleteTopicRequest{
 			Topic: destTopicFullName,
 		}); err != nil {
-			log.Printf("Failed to delete destination topic %s: %v", destTopicFullName, err)
+			log := logger.NewLogger()
+			log.Error("Failed to delete destination topic", err, logger.String("topic", destTopicFullName))
 		} else {
 			// Untrack successfully deleted resource
 			testCtx.UntrackTopic(destTopicFullName)

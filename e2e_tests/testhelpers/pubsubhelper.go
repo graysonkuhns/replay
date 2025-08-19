@@ -3,10 +3,10 @@ package testhelpers
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 
 	"replay/constants"
+	"replay/logger"
 
 	"cloud.google.com/go/pubsub/v2"
 	pubsubpb "cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"
@@ -86,7 +86,8 @@ func PublishTestMessages(ctx context.Context, client *pubsub.Client, topicName s
 		id, err := result.Get(ctx)
 		if err != nil {
 			// Keep error logs as they are important for debugging
-			log.Printf("Failed to publish message %d: %v", i+1, err)
+			log := logger.NewLogger()
+			log.Error("Failed to publish message", err, logger.Int("messageNum", i+1))
 			return publishIDs, fmt.Errorf("failed to publish message %d: %w", i+1, err)
 		}
 		// Suppress success logs to avoid interfering with parallel test output

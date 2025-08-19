@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"strings"
 
 	"replay/constants"
+	"replay/logger"
 )
 
 // ErrQuit is returned when the user chooses to quit
@@ -26,6 +26,7 @@ type MessageProcessor struct {
 	config  CommandConfig
 	handler MessageHandler
 	output  io.Writer
+	log     logger.Logger
 }
 
 // NewMessageProcessor creates a new message processor
@@ -35,6 +36,7 @@ func NewMessageProcessor(broker MessageBroker, config CommandConfig, handler Mes
 		config:  config,
 		handler: handler,
 		output:  output,
+		log:     logger.NewLoggerWithOutput(output),
 	}
 }
 
@@ -55,7 +57,7 @@ func (p *MessageProcessor) Process(ctx context.Context) (int, error) {
 				errors.Is(err, context.DeadlineExceeded) {
 				break
 			}
-			fmt.Fprintf(p.output, "Error during message pull: %v\n", err)
+			p.log.Error("Error during message pull", err)
 			continue
 		}
 
@@ -73,14 +75,14 @@ func (p *MessageProcessor) Process(ctx context.Context) (int, error) {
 			if errors.Is(err, ErrQuit) {
 				break
 			}
-			fmt.Fprintf(p.output, "Error handling message %d: %v\n", msgNum, err)
+			p.log.Error("Error handling message", err, logger.Int("messageNum", msgNum))
 			continue
 		}
 
 		// Acknowledge if requested
 		if acknowledge {
 			if err := p.broker.Acknowledge(ctx, message.AckID); err != nil {
-				fmt.Fprintf(p.output, "Warning: failed to acknowledge message %d: %v\n", msgNum, err)
+				p.log.Error("Warning: failed to acknowledge message", err, logger.Int("messageNum", msgNum))
 			}
 			processed++
 		}

@@ -1,11 +1,11 @@
 package main
 
 import (
-	"log"
 	"os"
 	"path/filepath"
 
 	"replay/cmd"
+	"replay/logger"
 
 	"github.com/spf13/cobra/doc"
 )
@@ -20,8 +20,10 @@ func main() {
 	}
 
 	// Ensure output directory exists
+	log := logger.NewLogger()
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
-		log.Fatalf("Failed to create output directory: %v", err)
+		log.Error("Failed to create output directory", err)
+		os.Exit(1)
 	}
 
 	// Get the root command from the main application
@@ -29,13 +31,15 @@ func main() {
 
 	// Generate Markdown documentation
 	if err := doc.GenMarkdownTree(rootCmd, outputDir); err != nil {
-		log.Fatalf("Failed to generate documentation: %v", err)
+		log.Error("Failed to generate documentation", err)
+		os.Exit(1)
 	}
 
 	absPath, err := filepath.Abs(outputDir)
 	if err != nil {
-		log.Fatalf("Failed to get absolute path: %v", err)
+		log.Error("Failed to get absolute path", err)
+		os.Exit(1)
 	}
 
-	log.Printf("Documentation successfully generated in %s", absPath)
+	log.Info("Documentation successfully generated", logger.String("path", absPath))
 }

@@ -6,8 +6,9 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
+
+	"replay/logger"
 
 	"github.com/spf13/cobra"
 )
@@ -15,33 +16,32 @@ import (
 // MoveHandler implements MessageHandler for automatic message moving
 type MoveHandler struct {
 	broker MessageBroker
-	logger *log.Logger
+	log    logger.Logger
 }
 
 // NewMoveHandler creates a new move handler
 func NewMoveHandler(broker MessageBroker) *MoveHandler {
-	logger := log.New(os.Stdout, "", log.LstdFlags)
 	return &MoveHandler{
 		broker: broker,
-		logger: logger,
+		log:    logger.NewLogger(),
 	}
 }
 
 // HandleMessage implements automatic message moving
 func (h *MoveHandler) HandleMessage(ctx context.Context, message *Message, msgNum int) (bool, error) {
-	h.logger.Printf("Pulled message %d", msgNum)
-	h.logger.Printf("Publishing message %d", msgNum)
+	h.log.Info("Pulled message", logger.Int("messageNum", msgNum))
+	h.log.Info("Publishing message", logger.Int("messageNum", msgNum))
 
 	// Publish the message
 	if err := h.broker.Publish(ctx, message); err != nil {
-		h.logger.Printf("Failed to publish message %d: %v", msgNum, err)
+		h.log.Error("Failed to publish message", err, logger.Int("messageNum", msgNum))
 		return false, fmt.Errorf("failed to publish: %w", err)
 	}
-	h.logger.Printf("Published message %d successfully", msgNum)
+	h.log.Info("Published message successfully", logger.Int("messageNum", msgNum))
 
 	// Log acknowledgement (actual ack handled by processor)
-	h.logger.Printf("Acked message %d", msgNum)
-	h.logger.Printf("Processed message %d", msgNum)
+	h.log.Info("Acked message", logger.Int("messageNum", msgNum))
+	h.log.Info("Processed message", logger.Int("messageNum", msgNum))
 
 	return true, nil
 }
@@ -53,24 +53,27 @@ var moveCmd = &cobra.Command{
 	Long: `Moves messages from a source to a destination.
 Each message is polled, published, and acknowledged sequentially.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		log.SetOutput(os.Stdout)
+		log := logger.NewLogger()
 
 		// Parse and validate configuration
 		config, err := ParseCommandConfig(cmd)
 		if err != nil {
-			log.Printf("Error: %v", err)
+			log.Error("Configuration error", err)
 			return
 		}
 
 		// Informational output
-		log.Printf("Moving messages from %s to %s", config.Source, config.Destination)
+		log.Info("Moving messages",
+			logger.String("source", config.Source),
+			logger.String("destination", config.Destination))
 
 		ctx := context.Background()
 
 		// Create message broker
 		broker, err := NewPubSubBroker(ctx, config.Source, config.Destination)
 		if err != nil {
-			log.Fatalf("%v", err)
+			log.Error("Failed to create broker", err)
+			os.Exit(1)
 		}
 		defer broker.Close()
 
@@ -81,15 +84,10 @@ Each message is polled, published, and acknowledged sequentially.`,
 		// Process messages
 		processed, err := processor.Process(ctx)
 		if err != nil {
-			log.Printf("Error during processing: %v", err)
+			log.Error("Error during processing", err)
 		}
 
-		log.Printf("Move operation completed. Total messages moved: %d", processed)
-
-		// Ensure all log output is flushed before exiting
-		if f, ok := log.Writer().(*os.File); ok {
-			_ = f.Sync()
-		}
+		log.Info("Move operation completed", logger.Int("totalMoved", processed))
 	},
 }
 

@@ -11,6 +11,8 @@ import (
 	"os"
 	"strings"
 
+	"replay/logger"
+
 	"github.com/spf13/cobra"
 )
 
@@ -87,17 +89,19 @@ For moved messages, the message is republished to the destination.`,
 		// Parse and validate configuration
 		config, err := ParseCommandConfig(cmd)
 		if err != nil {
-			fmt.Printf("Error: %v\n", err)
+			log := logger.NewLogger()
+			log.Error("Configuration error", err)
 			return
 		}
 
-		fmt.Printf("Starting DLR review from %s\n", config.Source)
+		log := logger.NewLogger()
+		log.Info("Starting DLR review", logger.String("source", config.Source))
 		ctx := context.Background()
 
 		// Create message broker
 		broker, err := NewPubSubBroker(ctx, config.Source, config.Destination)
 		if err != nil {
-			fmt.Printf("Error: %v\n", err)
+			log.Error("Failed to create broker", err)
 			return
 		}
 		defer broker.Close()
@@ -109,7 +113,7 @@ For moved messages, the message is republished to the destination.`,
 		// Process messages
 		processed, _ := processor.Process(ctx)
 
-		fmt.Printf("\nDead-lettered messages review completed. Total messages processed: %d\n", processed)
+		log.Info("Dead-lettered messages review completed", logger.Int("totalProcessed", processed))
 	},
 }
 
