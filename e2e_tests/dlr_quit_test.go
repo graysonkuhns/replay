@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 
 	"replay/constants"
 	"replay/e2e_tests/testhelpers"
@@ -31,9 +30,14 @@ func TestDLRQuitOperation(t *testing.T) {
 		t.Fatalf("Failed to publish test messages: %v", err)
 	}
 
-	// Add extra wait to ensure messages are properly available in subscription
-	// This helps with test isolation when running in parallel
-	time.Sleep(constants.TestWaitShort)
+	// Wait for messages to be available in subscription with smart polling
+	ctx := baseTest.Setup.Context
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := testhelpers.WaitForMessagesInSubscription(ctx, baseTest, baseTest.Setup.GetSourceSubscriptionName(), numMessages, nil); err != nil {
+		t.Fatalf("Failed to wait for messages: %v", err)
+	}
 
 	// Simulate user inputs: "m" (move) for 2 messages, "d" (discard) for 1 message, then "q" (quit)
 	inputs := "m\nm\nd\nq\n"
@@ -110,8 +114,10 @@ func TestDLRQuitOperation(t *testing.T) {
 		}
 	}
 
-	// Wait for ack deadline to expire (60 seconds) before checking the source subscription
-	time.Sleep(constants.TestAckDeadlineExpiry)
+	// Wait for ack deadline to expire before checking the source subscription
+	if err := testhelpers.WaitWithBackoff(baseTest.Setup.Context, "ack deadline expiry", constants.TestAckDeadlineExpiry, baseTest); err != nil {
+		t.Logf("Warning during ack deadline wait: %v", err)
+	}
 
 	// Verify that one message remains in the source subscription
 	// We expect exactly 1 message to remain in the source subscription after processing.
@@ -130,7 +136,10 @@ func TestDLRQuitOperation(t *testing.T) {
 
 		if attempt < maxAttempts {
 			t.Logf("Attempt %d: Expected 1 message in source, got %d. Retrying...", attempt, len(sourceReceived))
-			time.Sleep(constants.TestWaitShort)
+			// Use smart polling wait instead of sleep
+			if waitErr := testhelpers.WaitWithBackoff(baseTest.Setup.Context, "retry delay", constants.TestWaitShort, baseTest); waitErr != nil {
+				t.Logf("Warning during retry wait: %v", waitErr)
+			}
 		}
 	}
 

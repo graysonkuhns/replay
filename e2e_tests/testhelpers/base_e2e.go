@@ -1,6 +1,7 @@
 package testhelpers
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -122,82 +123,75 @@ func (b *BaseE2ETest) RunMoveCommandWithArgs(args []string) (string, error) {
 // VerifyMessagesInDestination polls and verifies messages in destination subscription
 func (b *BaseE2ETest) VerifyMessagesInDestination(expected int) error {
 	b.Helper()
-	// Add retry logic for improved reliability
-	const maxRetries = constants.TestMaxRetries
-	const retryDelay = constants.TestRetryDelay
 
-	var lastErr error
-	for attempt := 1; attempt <= maxRetries; attempt++ {
-		received, err := PollMessages(
-			b.Setup.Context,
-			b.Setup.Client,
-			b.Setup.GetDestSubscriptionName(),
-			b.TestRunID,
-			expected,
-		)
-		if err == nil && len(received) == expected {
-			return nil
-		}
-
-		if err != nil {
-			lastErr = fmt.Errorf("error polling destination subscription: %w", err)
-		} else {
-			lastErr = fmt.Errorf("expected %d messages in destination, got %d", expected, len(received))
-		}
-
-		if attempt < maxRetries {
-			b.Logf("Attempt %d failed: %v. Retrying in %v...", attempt, lastErr, retryDelay)
-			time.Sleep(retryDelay)
-		}
+	ctx := b.Setup.Context
+	if ctx == nil {
+		ctx = context.Background()
 	}
 
-	return fmt.Errorf("failed after %d attempts: %w", maxRetries, lastErr)
+	// Use WaitForMessagesInSubscription with custom options
+	opts := &PollingOptions{
+		InitialInterval: constants.TestRetryDelay / 2,
+		MaxInterval:     constants.TestRetryDelay,
+		Multiplier:      1.5,
+		MaxElapsedTime:  time.Duration(constants.TestMaxRetries) * constants.TestRetryDelay,
+		ProgressCallback: func(elapsed time.Duration, attempt int) {
+			b.Logf("Waiting for %d messages in destination (elapsed: %v, attempts: %d)",
+				expected, elapsed, attempt)
+		},
+	}
+
+	return WaitForMessagesInSubscription(ctx, b, b.Setup.GetDestSubscriptionName(), expected, opts)
 }
 
 // VerifyMessagesInSource polls and verifies messages in source subscription
 func (b *BaseE2ETest) VerifyMessagesInSource(expected int) error {
 	b.Helper()
-	// Add retry logic for improved reliability
-	const maxRetries = constants.TestMaxRetries
-	const retryDelay = constants.TestRetryDelay
 
-	var lastErr error
-	for attempt := 1; attempt <= maxRetries; attempt++ {
-		received, err := PollMessages(
-			b.Setup.Context,
-			b.Setup.Client,
-			b.Setup.GetSourceSubscriptionName(),
-			b.TestRunID,
-			expected,
-		)
-		if err == nil && len(received) == expected {
-			return nil
-		}
-
-		if err != nil {
-			lastErr = fmt.Errorf("error polling source subscription: %w", err)
-		} else {
-			lastErr = fmt.Errorf("expected %d messages in source, got %d", expected, len(received))
-		}
-
-		if attempt < maxRetries {
-			b.Logf("Attempt %d failed: %v. Retrying in %v...", attempt, lastErr, retryDelay)
-			time.Sleep(retryDelay)
-		}
+	ctx := b.Setup.Context
+	if ctx == nil {
+		ctx = context.Background()
 	}
 
-	return fmt.Errorf("failed after %d attempts: %w", maxRetries, lastErr)
+	// Use WaitForMessagesInSubscription with custom options
+	opts := &PollingOptions{
+		InitialInterval: constants.TestRetryDelay / 2,
+		MaxInterval:     constants.TestRetryDelay,
+		Multiplier:      1.5,
+		MaxElapsedTime:  time.Duration(constants.TestMaxRetries) * constants.TestRetryDelay,
+		ProgressCallback: func(elapsed time.Duration, attempt int) {
+			b.Logf("Waiting for %d messages in source (elapsed: %v, attempts: %d)",
+				expected, elapsed, attempt)
+		},
+	}
+
+	return WaitForMessagesInSubscription(ctx, b, b.Setup.GetSourceSubscriptionName(), expected, opts)
 }
 
 // GetMessagesFromDestination retrieves messages from destination subscription
 func (b *BaseE2ETest) GetMessagesFromDestination(expected int) ([]*pubsub.Message, error) {
 	b.Helper()
-	// Retry mechanism for improved reliability in nightly tests
-	const maxRetries = constants.TestMaxRetries
-	const retryDelay = constants.TestRetryDelay // Increased from 5s to match VerifyMessagesInDestination
 
-	var lastErr error
-	for attempt := 1; attempt <= maxRetries; attempt++ {
+	ctx := b.Setup.Context
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	var messages []*pubsub.Message
+
+	// Use WaitForCondition to retry with smart polling
+	opts := &PollingOptions{
+		InitialInterval: constants.TestRetryDelay / 2,
+		MaxInterval:     constants.TestRetryDelay,
+		Multiplier:      1.5,
+		MaxElapsedTime:  time.Duration(constants.TestMaxRetries) * constants.TestRetryDelay,
+		ProgressCallback: func(elapsed time.Duration, attempt int) {
+			b.Logf("Retrieving %d messages from destination (elapsed: %v, attempts: %d)",
+				expected, elapsed, attempt)
+		},
+	}
+
+	condition := func() (bool, error) {
 		received, err := PollMessages(
 			b.Setup.Context,
 			b.Setup.Client,
@@ -205,20 +199,19 @@ func (b *BaseE2ETest) GetMessagesFromDestination(expected int) ([]*pubsub.Messag
 			b.TestRunID,
 			expected,
 		)
-
 		if err == nil {
-			return received, nil
+			messages = received
+			return true, nil
 		}
-
-		lastErr = err
-		if attempt < maxRetries {
-			b.Logf("Attempt %d failed to get %d messages from destination: %v. Retrying in %v...",
-				attempt, expected, err, retryDelay)
-			time.Sleep(retryDelay)
-		}
+		return false, err
 	}
 
-	return nil, fmt.Errorf("failed to get messages after %d attempts: %w", maxRetries, lastErr)
+	err := WaitForCondition(ctx, fmt.Sprintf("retrieving %d messages from destination", expected), condition, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return messages, nil
 }
 
 // GetMessagesFromSource retrieves messages from source subscription
@@ -236,7 +229,14 @@ func (b *BaseE2ETest) GetMessagesFromSource(expected int) ([]*pubsub.Message, er
 // WaitForMessagePropagation waits for messages to propagate through PubSub
 func (b *BaseE2ETest) WaitForMessagePropagation() {
 	b.Helper()
-	time.Sleep(constants.TestMessagePropagation)
+	ctx := b.Setup.Context
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := WaitWithBackoff(ctx, "message propagation", constants.TestMessagePropagation, b); err != nil {
+		// Log the error but don't fail the test since this is just a wait
+		b.Logf("Warning during message propagation wait: %v", err)
+	}
 }
 
 // CreateTestMessages creates standard test messages with test context attributes
