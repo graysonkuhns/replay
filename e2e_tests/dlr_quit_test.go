@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"replay/constants"
 	"replay/e2e_tests/testhelpers"
@@ -121,36 +122,44 @@ func TestDLRQuitOperation(t *testing.T) {
 
 	// Verify that one message remains in the source subscription
 	// We expect exactly 1 message to remain in the source subscription after processing.
-	// Try multiple times to account for timing variations when running with other tests
+	// Use smart polling with custom options for better reliability
 	var sourceReceived []*pubsub.Message
-	maxAttempts := 3
-	for attempt := 1; attempt <= maxAttempts; attempt++ {
+
+	opts := &testhelpers.PollingOptions{
+		InitialInterval: constants.TestWaitShort / 2,
+		MaxInterval:     constants.TestWaitShort,
+		Multiplier:      1.5,
+		MaxElapsedTime:  3 * constants.TestWaitShort,
+		ProgressCallback: func(elapsed time.Duration, attempt int) {
+			baseTest.Logf("Verifying remaining message in source (elapsed: %v, attempts: %d)", elapsed, attempt)
+		},
+	}
+
+	condition := func() (bool, error) {
 		// Use a longer timeout context for this specific polling operation
 		pollCtx, pollCancel := context.WithTimeout(baseTest.Setup.Context, constants.TestLongPollTimeout)
-		sourceReceived, err = testhelpers.PollMessages(pollCtx, baseTest.Setup.Client, baseTest.Setup.GetSourceSubscriptionName(), baseTest.TestRunID, 1)
-		pollCancel()
+		defer pollCancel()
 
-		if err == nil && len(sourceReceived) == 1 {
-			break // Success
+		messages, err := testhelpers.PollMessages(pollCtx, baseTest.Setup.Client, baseTest.Setup.GetSourceSubscriptionName(), baseTest.TestRunID, 1)
+		if err == nil && len(messages) == 1 {
+			sourceReceived = messages
+			return true, nil
 		}
 
-		if attempt < maxAttempts {
-			t.Logf("Attempt %d: Expected 1 message in source, got %d. Retrying...", attempt, len(sourceReceived))
-			// Use smart polling wait instead of sleep
-			if waitErr := testhelpers.WaitWithBackoff(baseTest.Setup.Context, "retry delay", constants.TestWaitShort, baseTest); waitErr != nil {
-				t.Logf("Warning during retry wait: %v", waitErr)
-			}
+		if err != nil {
+			return false, fmt.Errorf("error polling source subscription: %w", err)
 		}
+
+		baseTest.Logf("Expected 1 message in source, got %d. Continuing to wait...", len(messages))
+		return false, nil
 	}
 
-	if err != nil {
-		t.Fatalf("Error polling source subscription: %v", err)
-	}
-	if len(sourceReceived) != 1 {
+	waitErr := testhelpers.WaitForCondition(ctx, "verifying 1 message remains in source", condition, opts)
+	if waitErr != nil {
 		// Log more details to help debug the issue
-		t.Logf("Test isolation issue: Expected 1 message in source subscription, got %d", len(sourceReceived))
+		t.Logf("Test isolation issue: Failed to verify remaining message in source subscription")
 		t.Logf("This test expects the 4th message to remain after quit, but it may have been processed")
-		t.Fatalf("Expected 1 message in source subscription, got %d", len(sourceReceived))
+		t.Fatalf("Failed to verify remaining messages: %v", waitErr)
 	}
 
 	// Verify the remaining message is from our test set
