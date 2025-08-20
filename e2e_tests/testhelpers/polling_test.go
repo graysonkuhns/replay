@@ -235,9 +235,9 @@ func TestWaitWithBackoff(t *testing.T) {
 			t.Error("Expected context cancellation error, got nil")
 		}
 
-		// Should have been cancelled well before the full duration
+		// Should have been canceled well before the full duration
 		if elapsed > 200*time.Millisecond {
-			t.Errorf("Expected to be cancelled quickly, but waited %v", elapsed)
+			t.Errorf("Expected to be canceled quickly, but waited %v", elapsed)
 		}
 	})
 }

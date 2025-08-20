@@ -98,7 +98,7 @@ func WaitForCondition(ctx context.Context, description string, condition func() 
 		case <-timeoutCtx.Done():
 			timer.Stop()
 			elapsed := time.Since(startTime)
-			return fmt.Errorf("context cancelled after %v waiting for %s (attempts: %d)", elapsed, description, attempt)
+			return fmt.Errorf("context canceled after %v waiting for %s (attempts: %d)", elapsed, description, attempt)
 		case <-timer.C:
 			// Continue to next iteration
 		}
@@ -179,7 +179,7 @@ func WaitWithBackoff(ctx context.Context, description string, duration time.Dura
 
 	err := WaitForCondition(waitCtx, description, condition, opts)
 
-	// Check if the parent context was cancelled (not our timeout)
+	// Check if the parent context was canceled (not our timeout)
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
