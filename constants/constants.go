@@ -17,12 +17,12 @@ const (
 
 // Test-specific timeouts
 const (
-	TestShortPollTimeout    = 5 * time.Second
-	TestRetryDelay          = 10 * time.Second
-	TestMessagePropagation  = 30 * time.Second
-	TestLongPollTimeout     = 60 * time.Second
-	TestAckDeadlineExpiry   = 70 * time.Second
-	TestExtendedPollTimeout = 90 * time.Second
+	TestShortPollTimeout    = 3 * time.Second
+	TestRetryDelay          = 5 * time.Second
+	TestMessagePropagation  = 15 * time.Second
+	TestLongPollTimeout     = 20 * time.Second
+	TestAckDeadlineExpiry   = 35 * time.Second
+	TestExtendedPollTimeout = 30 * time.Second
 )
 
 // Test configuration
@@ -34,7 +34,7 @@ const (
 
 // Wait times for test operations
 const (
-	TestWaitShort  = 10 * time.Second
-	TestWaitMedium = 20 * time.Second
-	TestWaitLong   = 30 * time.Second
+	TestWaitShort  = 3 * time.Second
+	TestWaitMedium = 7 * time.Second
+	TestWaitLong   = 15 * time.Second
 )
