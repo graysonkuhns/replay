@@ -39,9 +39,8 @@ jobs:
       - name: Run E2E tests
         run: |
           chmod +x ./run_tests.sh
-          # Use default parallelism (4) for nightly runs since we have more time
           # Capture test output to log file for issue creation
-          PARALLEL_TESTS=1 ./run_tests.sh 2>&1 | tee nightly-test-output.log
+          PARALLEL_TESTS=10 ./run_tests.sh 2>&1 | tee nightly-test-output.log
         timeout-minutes: 50
 
       - name: Upload test results
