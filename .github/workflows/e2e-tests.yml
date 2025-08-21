@@ -36,7 +36,7 @@ jobs:
       - name: Run E2E tests
         run: |
           chmod +x ./run_tests.sh
-          PARALLEL_TESTS=1 ./run_tests.sh
+          PARALLEL_TESTS=10 ./run_tests.sh
         timeout-minutes: 50
 
       - name: Upload test results
