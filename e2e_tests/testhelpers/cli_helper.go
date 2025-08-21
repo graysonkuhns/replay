@@ -2,65 +2,51 @@ package testhelpers
 
 import (
 	"bytes"
+	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"regexp"
-
-	"replay/cmd"
 )
 
-// RunCLICommand sets up the CLI arguments, executes the CLI tool,
+// RunCLICommand executes the replay CLI binary as a subprocess,
 // captures both stdout and stderr output and replaces timestamps with "[TIMESTAMP]".
 func RunCLICommand(args []string) (string, error) {
-	origArgs := os.Args
-	defer func() { os.Args = origArgs }()
-	os.Args = append([]string{"replay"}, args...)
-
-	// Capture stdout using os.Pipe.
-	rOut, wOut, err := os.Pipe()
-	if err != nil {
-		return "", err
+	// Look for the binary in the workspace root
+	workspaceRoot := os.Getenv("REPLAY_WORKSPACE_ROOT")
+	if workspaceRoot == "" {
+		// If not set, try to find it relative to the test file
+		workspaceRoot = filepath.Join("..", "..")
 	}
-	oldOut := os.Stdout
-	os.Stdout = wOut
 
-	// Capture stderr using os.Pipe.
-	rErr, wErr, err := os.Pipe()
-	if err != nil {
-		return "", err
+	binaryPath := filepath.Join(workspaceRoot, "replay")
+
+	// Check if binary exists
+	if _, err := os.Stat(binaryPath); os.IsNotExist(err) {
+		return "", fmt.Errorf("replay binary not found at %s. Please run 'go build' first", binaryPath)
 	}
-	oldErr := os.Stderr
-	os.Stderr = wErr
 
-	// Execute the CLI command.
-	cmd.Execute()
+	// Create the command
+	cmd := exec.Command(binaryPath, args...)
 
-	// Restore os.Stdout and os.Stderr.
-	wOut.Close()
-	wErr.Close()
-	os.Stdout = oldOut
-	os.Stderr = oldErr
+	// Capture stdout and stderr
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
 
-	// Read from both pipes.
-	var bufOut, bufErr bytes.Buffer
-	if _, err := bufOut.ReadFrom(rOut); err != nil {
-		rOut.Close()
-		rErr.Close()
-		return "", err
-	}
-	rOut.Close()
+	// Set stdin to os.Stdin to allow interactive commands
+	cmd.Stdin = os.Stdin
 
-	if _, err := bufErr.ReadFrom(rErr); err != nil {
-		rErr.Close()
-		return "", err
-	}
-	rErr.Close()
+	// Execute the command
+	err := cmd.Run()
 
-	// Combine stdout and stderr output.
-	output := bufOut.String() + bufErr.String()
+	// Combine stdout and stderr output
+	output := stdout.String() + stderr.String()
 
-	// Replace timestamp parts with a token.
+	// Replace timestamp parts with a token
 	tsRe := regexp.MustCompile(`\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}`)
 	output = tsRe.ReplaceAllString(output, "[TIMESTAMP]")
 
-	return output, nil
+	// Return output even if command failed (for testing error cases)
+	return output, err
 }
