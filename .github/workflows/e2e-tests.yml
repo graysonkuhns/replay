@@ -39,8 +39,8 @@ jobs:
 
       - name: Run E2E tests
         run: |
-          chmod +x ./run_tests_subset.sh
-          PARALLEL_TESTS=10 WORKER_INDEX=${{ matrix.worker }} TOTAL_WORKERS=3 ./run_tests_subset.sh
+          chmod +x ./run_e2e_tests_subset.sh
+          PARALLEL_TESTS=10 WORKER_INDEX=${{ matrix.worker }} TOTAL_WORKERS=3 ./run_e2e_tests_subset.sh
         timeout-minutes: 50
         env:
           WORKER_INDEX: ${{ matrix.worker }}

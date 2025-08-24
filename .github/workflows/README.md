@@ -57,7 +57,7 @@ You can use the same distribution mechanism locally:
 
 ```bash
 # Run as worker 0 of 3
-WORKER_INDEX=0 TOTAL_WORKERS=3 PARALLEL_TESTS=10 ./run_tests_subset.sh
+WORKER_INDEX=0 TOTAL_WORKERS=3 PARALLEL_TESTS=10 ./run_e2e_tests_subset.sh
 
 # Run all tests (no distribution)
 PARALLEL_TESTS=10 ./run_tests.sh
@@ -86,7 +86,7 @@ To change the number of parallel workers:
 ### Changing Parallelism per Worker
 Modify the `PARALLEL_TESTS` environment variable in the run step:
 ```yaml
-PARALLEL_TESTS=20 WORKER_INDEX=${{ matrix.worker }} TOTAL_WORKERS=3 ./run_tests_subset.sh
+PARALLEL_TESTS=20 WORKER_INDEX=${{ matrix.worker }} TOTAL_WORKERS=3 ./run_e2e_tests_subset.sh
 ```
 
 ## Troubleshooting

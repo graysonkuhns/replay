@@ -42,9 +42,9 @@ jobs:
 
       - name: Run E2E tests
         run: |
-          chmod +x ./run_tests_subset.sh
+          chmod +x ./run_e2e_tests_subset.sh
           # Capture test output to log file for issue creation
-          PARALLEL_TESTS=10 WORKER_INDEX=${{ matrix.worker }} TOTAL_WORKERS=3 ./run_tests_subset.sh 2>&1 | tee nightly-test-output-worker-${{ matrix.worker }}.log
+          PARALLEL_TESTS=10 WORKER_INDEX=${{ matrix.worker }} TOTAL_WORKERS=3 ./run_e2e_tests_subset.sh 2>&1 | tee nightly-test-output-worker-${{ matrix.worker }}.log
         timeout-minutes: 50
         env:
           WORKER_INDEX: ${{ matrix.worker }}
