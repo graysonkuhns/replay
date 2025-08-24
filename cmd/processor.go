@@ -41,6 +41,7 @@ func NewMessageProcessor(broker MessageBroker, config CommandConfig, handler Mes
 // Process runs the message processing loop
 func (p *MessageProcessor) Process(ctx context.Context) (int, error) {
 	processed := 0
+	consecutiveErrors := 0
 
 	for {
 		// Pull a message
@@ -55,9 +56,19 @@ func (p *MessageProcessor) Process(ctx context.Context) (int, error) {
 				errors.Is(err, context.DeadlineExceeded) {
 				break
 			}
+
+			consecutiveErrors++
 			fmt.Fprintf(p.output, "Error during message pull: %v\n", err)
+
+			// Exit if we've hit too many consecutive errors
+			if consecutiveErrors >= constants.MaxConsecutiveErrors {
+				return processed, fmt.Errorf("stopping after %d consecutive errors: %w", constants.MaxConsecutiveErrors, err)
+			}
 			continue
 		}
+
+		// Reset error counter on successful pull
+		consecutiveErrors = 0
 
 		// No more messages
 		if message == nil {
