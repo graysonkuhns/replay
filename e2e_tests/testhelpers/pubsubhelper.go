@@ -98,6 +98,15 @@ func PublishTestMessages(ctx context.Context, client *pubsub.Client, topicName s
 
 // PollMessages polls messages from a subscription and verifies the expected count.
 func PollMessages(ctx context.Context, client *pubsub.Client, subscriptionName string, testRunValue string, expectedCount int) ([]*pubsub.Message, error) {
+	return pollMessagesWithAck(ctx, client, subscriptionName, testRunValue, expectedCount, true)
+}
+
+// PollMessagesNoAck polls messages without acknowledging them (for verification purposes)
+func PollMessagesNoAck(ctx context.Context, client *pubsub.Client, subscriptionName string, testRunValue string, expectedCount int) ([]*pubsub.Message, error) {
+	return pollMessagesWithAck(ctx, client, subscriptionName, testRunValue, expectedCount, false)
+}
+
+func pollMessagesWithAck(ctx context.Context, client *pubsub.Client, subscriptionName string, testRunValue string, expectedCount int, acknowledge bool) ([]*pubsub.Message, error) {
 	var received []*pubsub.Message
 	// Increase timeout for better reliability with slower message propagation
 	cctx, cancel := context.WithTimeout(ctx, constants.TestExtendedPollTimeout)
@@ -112,8 +121,15 @@ func PollMessages(ctx context.Context, client *pubsub.Client, subscriptionName s
 			// Suppress logs to avoid interfering with parallel test output
 			// log.Printf("Received test message: %s", string(m.Data))
 			received = append(received, m)
+			if acknowledge {
+				m.Ack()
+			} else {
+				m.Nack() // Return the message to the subscription
+			}
+		} else {
+			// Always ack non-test messages to avoid interference
+			m.Ack()
 		}
-		m.Ack()
 		if len(received) >= expectedCount {
 			cancel()
 		}

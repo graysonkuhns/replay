@@ -163,7 +163,7 @@ func (b *BaseE2ETest) VerifyMessagesInSource(expected int) error {
 
 	var lastErr error
 	for attempt := 1; attempt <= maxRetries; attempt++ {
-		received, err := PollMessages(
+		received, err := PollMessagesNoAck(
 			b.Setup.Context,
 			b.Setup.Client,
 			b.Setup.GetSourceSubscriptionName(),
