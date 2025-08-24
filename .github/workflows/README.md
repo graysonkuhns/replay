@@ -1,57 +1,107 @@
-# GitHub Actions Integration Tests
+# GitHub Actions Workflows
 
-This repository includes GitHub Actions workflows that automatically run e2e tests:
-1. **PR Integration Tests** - Run on pull requests from trusted authors
-2. **Nightly Integration Tests** - Run automatically every night at 2 AM UTC
+This directory contains the CI/CD workflows for the Replay CLI project.
 
-## Required Secrets
+## Workflows
 
-To enable the e2e tests, the following GitHub repository secrets must be configured:
+### 1. E2E Tests (`e2e-tests.yml`)
+Runs on every pull request to ensure code quality. The tests are distributed across 3 parallel workers to improve execution time.
 
-### `GCP_SA_KEY`
-A service account key JSON for Google Cloud Platform authentication. This should be a base64-encoded service account key with permissions to:
-- Create and manage Pub/Sub topics and subscriptions
-- Access the test GCP project resources
+**Key Features:**
+- Runs tests across 3 GitHub Actions workers concurrently
+- Each worker runs its assigned tests with parallelism of 10
+- Uploads test artifacts separately for each worker
+- Includes a summary job to check overall test status
 
-### `GCP_PROJECT_ID`
-The Google Cloud Platform project ID where the e2e test resources will be created.
+### 2. Nightly E2E Tests (`nightly-e2e-tests.yml`)
+Runs every night at 2 AM UTC to catch regressions and flaky tests.
 
-## How to Configure Secrets
+**Key Features:**
+- Same parallel execution strategy as PR tests (3 workers)
+- Automatically creates GitHub issues when tests fail
+- Consolidates failure reports from all workers
+- Retains test artifacts for 30 days
 
-1. Go to your repository's Settings → Secrets and variables → Actions
-2. Click "New repository secret"
-3. Add the two required secrets with their respective values
+### 3. Lint (`lint.yml`)
+Runs Go linting checks on pull requests.
 
-## Workflow Behavior
+## Parallel Test Execution
 
-### PR Integration Tests
-- **Trigger**: Runs on pull request events (opened, synchronize, reopened)
-- **Parallelism**: Limited to 1 concurrent test for resource efficiency
-- **Integration Tests**: Run the e2e tests
-- **Timeout**: Tests have a 50-minute timeout
-- **Artifacts**: Test logs are uploaded as artifacts for 7 days
+The E2E tests use a parallel execution strategy to reduce overall test runtime:
 
-### Nightly Integration Tests
-- **Trigger**: Runs automatically every night at 2 AM UTC
-- **Manual Trigger**: Can also be triggered manually via workflow_dispatch
-- **Parallelism**: Uses default parallelism (4 concurrent tests) for better performance
-- **Integration Tests**: Run all e2e tests
-- **Timeout**: Tests have a 50-minute timeout
-- **Artifacts**: Test logs are uploaded as artifacts for 30 days
-- **Failure Handling**: Automatically creates GitHub issues when tests fail
+1. **Test Discovery**: Uses `tools/discover_tests.go` to find all test functions
+2. **Test Distribution**: Uses `tools/distribute_tests.go` to evenly distribute tests across workers
+3. **Worker Execution**: Each worker runs approximately 1/3 of the tests
 
-## Test Script
+### Configuration
+- **Number of Workers**: 3 (configurable in workflow files)
+- **Parallelism per Worker**: 10 (set via `PARALLEL_TESTS` environment variable)
 
-The workflow uses the existing `run_tests.sh` script which:
-- Loads environment variables from `.env` if available
-- Requires `GCP_PROJECT` environment variable
-- Runs Go e2e tests with a 20-minute timeout
-- Supports running specific tests by name
+### How It Works
 
-## Manual Testing
+1. The workflow creates a matrix strategy with 3 workers (0, 1, 2)
+2. Each worker:
+   - Discovers all available tests
+   - Calculates which tests it should run based on its index
+   - Runs only its assigned tests with parallelism of 10
+3. A summary job checks if all workers completed successfully
 
-To test the integration locally, ensure you have:
-1. Go 1.23.0+ installed
-2. `GCP_PROJECT` environment variable set
-3. Google Cloud authentication configured
-4. Run `./run_tests.sh`
+### Test Distribution Example
+With 100 tests and 3 workers:
+- Worker 0: Tests 1-34 (34 tests)
+- Worker 1: Tests 35-67 (33 tests)  
+- Worker 2: Tests 68-100 (33 tests)
+
+### Running Tests Locally
+You can use the same distribution mechanism locally:
+
+```bash
+# Run as worker 0 of 3
+WORKER_INDEX=0 TOTAL_WORKERS=3 PARALLEL_TESTS=10 ./run_tests_subset.sh
+
+# Run all tests (no distribution)
+PARALLEL_TESTS=10 ./run_tests.sh
+```
+
+## Modifying the Workflows
+
+### Changing Number of Workers
+To change the number of parallel workers:
+
+1. Update the matrix in the workflow file:
+   ```yaml
+   strategy:
+     matrix:
+       worker: [0, 1, 2, 3, 4]  # For 5 workers
+   ```
+
+2. Update the `TOTAL_WORKERS` environment variable:
+   ```yaml
+   env:
+     TOTAL_WORKERS: 5
+   ```
+
+3. For nightly tests, also update the worker loop in the summary job
+
+### Changing Parallelism per Worker
+Modify the `PARALLEL_TESTS` environment variable in the run step:
+```yaml
+PARALLEL_TESTS=20 WORKER_INDEX=${{ matrix.worker }} TOTAL_WORKERS=3 ./run_tests_subset.sh
+```
+
+## Troubleshooting
+
+### Tests Not Running on a Worker
+- Check the test discovery output in the workflow logs
+- Ensure tests follow the naming convention `Test*` and are in `*_test.go` files
+- Verify the test takes `*testing.T` as a parameter
+
+### Uneven Test Distribution
+The distribution algorithm ensures the difference between workers is at most 1 test. If you see larger differences, check:
+- Test discovery is finding all tests
+- No tests are being filtered out incorrectly
+
+### Worker Failures
+- Each worker uploads its own artifacts
+- Check the specific worker's logs and artifacts
+- The summary job will indicate which workers failed
