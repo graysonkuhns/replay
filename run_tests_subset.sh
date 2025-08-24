@@ -42,8 +42,8 @@ if [ -n "$WORKER_INDEX" ] && [ -n "$TOTAL_WORKERS" ]; then
   
   # Build the test discovery tool
   echo "Building test discovery tool..."
-  go build -o discover_tests ./tools/discover_tests.go
-  go build -o distribute_tests ./tools/distribute_tests.go
+  go build -o discover_tests ./tools/discover_tests
+  go build -o distribute_tests ./tools/distribute_tests
   
   # Discover all tests and distribute to this worker
   echo "Discovering tests..."
