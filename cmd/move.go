@@ -52,14 +52,14 @@ var moveCmd = &cobra.Command{
 	Short: "Moves messages from a source to a destination",
 	Long: `Moves messages from a source to a destination.
 Each message is polled, published, and acknowledged sequentially.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		log.SetOutput(os.Stdout)
 
 		// Parse and validate configuration
 		config, err := ParseCommandConfig(cmd)
 		if err != nil {
 			log.Printf("Error: %v", err)
-			return
+			return err
 		}
 
 		// Informational output
@@ -70,7 +70,8 @@ Each message is polled, published, and acknowledged sequentially.`,
 		// Create message broker
 		broker, err := NewPubSubBroker(ctx, config.Source, config.Destination)
 		if err != nil {
-			log.Fatalf("%v", err)
+			log.Printf("Error: %v", err)
+			return err
 		}
 		defer broker.Close()
 
@@ -82,6 +83,8 @@ Each message is polled, published, and acknowledged sequentially.`,
 		processed, err := processor.Process(ctx)
 		if err != nil {
 			log.Printf("Error during processing: %v", err)
+			log.Printf("Move operation failed. Total messages moved before error: %d", processed)
+			return fmt.Errorf("move operation failed: %w", err)
 		}
 
 		log.Printf("Move operation completed. Total messages moved: %d", processed)
@@ -90,6 +93,8 @@ Each message is polled, published, and acknowledged sequentially.`,
 		if f, ok := log.Writer().(*os.File); ok {
 			_ = f.Sync()
 		}
+
+		return nil
 	},
 }
 

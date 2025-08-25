@@ -83,12 +83,12 @@ var dlrCmd = &cobra.Command{
 	Short: "Review and process dead-lettered messages",
 	Long: `Interactively review dead-lettered messages and choose to discard or move each message.
 For moved messages, the message is republished to the destination.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		// Parse and validate configuration
 		config, err := ParseCommandConfig(cmd)
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
-			return
+			return err
 		}
 
 		fmt.Printf("Starting DLR review from %s\n", config.Source)
@@ -98,7 +98,7 @@ For moved messages, the message is republished to the destination.`,
 		broker, err := NewPubSubBroker(ctx, config.Source, config.Destination)
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
-			return
+			return err
 		}
 		defer broker.Close()
 
@@ -107,9 +107,15 @@ For moved messages, the message is republished to the destination.`,
 		processor := NewMessageProcessor(broker, *config, handler, os.Stdout)
 
 		// Process messages
-		processed, _ := processor.Process(ctx)
+		processed, err := processor.Process(ctx)
+		if err != nil {
+			fmt.Printf("\nError during processing: %v\n", err)
+			fmt.Printf("Dead-lettered messages review failed. Total messages processed before error: %d\n", processed)
+			return fmt.Errorf("dlr operation failed: %w", err)
+		}
 
 		fmt.Printf("\nDead-lettered messages review completed. Total messages processed: %d\n", processed)
+		return nil
 	},
 }
 

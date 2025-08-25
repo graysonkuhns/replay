@@ -13,6 +13,7 @@ const (
 	DefaultPollTimeoutSeconds = 10
 	DefaultPollTimeout        = 10 * time.Second
 	DefaultMaxMessages        = 1
+	MaxConsecutiveErrors      = 5
 )
 
 // Test-specific timeouts
