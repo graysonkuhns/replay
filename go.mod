@@ -6,7 +6,7 @@ require (
 	cloud.google.com/go/pubsub/v2 v2.0.0
 	github.com/spf13/cobra v1.9.1
 	google.golang.org/grpc v1.74.2
-	google.golang.org/protobuf v1.36.8
+	google.golang.org/protobuf v1.36.10
 )
 
 require (
